@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>대구 분진흡입차량 운행 분석 & 실시간 대기정보 관제</title>
+  <meta name="description" content="대구광역시 행정구역 및 실시간 대기정보(air.daegu.go.kr) 크롤링 연동 관제 플랫폼">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
+
+  <!-- Google Fonts (Pretendard & Outfit) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Leaflet Map CDN (도로망 뷰용) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Early Global Stubs (스크립트 로드 지연 또는 사용자 조기 클릭 시 ReferenceError 원천 차단) -->
+  <script>
+    window.setMasterView = function(viewType) {
+      window._pendingMasterView = viewType;
+      if (typeof window._realSetMasterView === 'function') {
+        window._realSetMasterView(viewType);
+      }
+    };
+    window.toggleNaverOverlay = function(type) {
+      if (typeof window._realToggleNaverOverlay === 'function') {
+        window._realToggleNaverOverlay(type);
+      }
+    };
+    window.openAirModal = function() {
+      const modal = document.getElementById('air-modal');
+      if (modal) modal.style.display = 'flex';
+      if (typeof window._realOpenAirModal === 'function') window._realOpenAirModal();
+    };
+    window.closeAirModal = function() {
+      const modal = document.getElementById('air-modal');
+      if (modal) modal.style.display = 'none';
+      if (typeof window._realCloseAirModal === 'function') window._realCloseAirModal();
+    };
+    window.closeDetailCard = function() {
+      const card = document.getElementById('detail-card');
+      if (card) card.style.display = 'none';
+      if (typeof window._realCloseDetailCard === 'function') window._realCloseDetailCard();
+    };
+    window.openDynamicRoutePanel = function() {
+      const modal = document.getElementById('dynamic-route-modal');
+      if (modal) modal.style.display = 'flex';
+      if (window.lucide) lucide.createIcons();
+      if (typeof window._realOpenDynamicRoutePanel === 'function') window._realOpenDynamicRoutePanel();
+    };
+    window.closeDynamicRoutePanel = function() {
+      const modal = document.getElementById('dynamic-route-modal');
+      if (modal) modal.style.display = 'none';
+      if (typeof window._realCloseDynamicRoutePanel === 'function') window._realCloseDynamicRoutePanel();
+    };
+    window.generateAndDisplayDynamicRoute = function(zoneId, dateStr, hourStr) {
+      if (typeof window._realGenerateDynamicRoute === 'function') {
+        window._realGenerateDynamicRoute(zoneId, dateStr, hourStr);
+      } else {
+        window._pendingDynamicRouteGen = { zoneId, dateStr, hourStr };
+      }
+    };
+    window.toggleDummyRouteView = function() {
+      if (typeof window._realToggleDummyRouteView === 'function') {
+        window._realToggleDummyRouteView();
+      }
+    };
+  </script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20261005_compact_zdc_v3" onerror="this.onerror=null; this.href='../static/css/style.css?v=20261005_compact_zdc_v3';">
+</head>
+<body>
+
+  <div class="map-app-container">
+
+    <!-- 1. 상단 플로팅 헤더 -->
+    <header class="floating-header">
+      <div class="header-brand">
+        <div class="brand-icon">
+          <i data-lucide="wind"></i>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">대구 분진흡입차량 & 대기정보 관제</h1>
+          <span class="brand-subtitle">Daegu Dust Suction & Real-time Air Quality</span>
+        </div>
+        <div class="header-badge" id="header-realtime-badge">
+          <span class="pulse-dot"></span>
+          대구시 실시간 연동
+        </div>
+      </div>
+
+      <!-- 실시간 대기 관제 라이브 칩 (air.daegu.go.kr 크롤링 데이터 실시간 표출) -->
+      <div class="air-live-pill" id="air-live-pill" onclick="openAirModal()" title="클릭하여 24시간 실시간 대기자료 표 열기">
+        <div class="air-pill-status status-good">
+          <i data-lucide="smile" id="air-live-icon"></i>
+        </div>
+        <div class="air-pill-info">
+          <div class="air-pill-station" id="air-live-station">수창동(중구)</div>
+          <div class="air-pill-values">
+            <span>PM10: <strong id="air-live-pm10">27</strong>㎍/㎥</span>
+            <span class="divider">|</span>
+            <span>PM2.5: <strong id="air-live-pm25">17</strong>㎍/㎥</span>
+          </div>
+        </div>
+        <button class="air-pill-btn" title="전체 시간대별 표 조회">
+          <i data-lucide="table-properties"></i>
+        </button>
+      </div>
+
+      <!-- 액션 버튼 -->
+      <div class="header-actions">
+        <button class="action-btn" id="btn-reset-view" title="전체 선택 초기화">
+          <i data-lucide="rotate-ccw"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- 2. 좌측 플로팅 패널 -->
+    <aside class="floating-panel" id="control-panel">
+      <div class="panel-header" id="panel-toggle-header">
+        <div class="panel-title">
+          <i data-lucide="activity"></i>
+          <span id="panel-title-text">대구 실시간 대기현황</span>
+        </div>
+      </div>
+
+      <div class="panel-body" id="air-panel-body">
+        <!-- 실시간 측정소 선택 셀렉트 -->
+        <div class="control-group">
+          <label class="control-label" for="station-select">
+            <i data-lucide="radio"></i>
+            대기 측정소 직접 선택
+          </label>
+          <select id="station-select" class="custom-select">
+            <option value="701">701 수창동 (중구)</option>
+            <option value="702">702 지산동 (수성구)</option>
+            <option value="703">703 서호동 (동구)</option>
+            <option value="704">704 이현동 (서구)</option>
+            <option value="705">705 대명동 (남구)</option>
+            <option value="707">707 신암동 (동구)</option>
+            <option value="708">708 태전동 (북구)</option>
+            <option value="709">709 만촌동 (수성구)</option>
+            <option value="710">710 호림동 (달서구)</option>
+            <option value="711">711 유가읍 (달성군)</option>
+            <option value="712">712 시지동 (수성구)</option>
+            <option value="713">713 진천동 (달서구)</option>
+            <option value="714">714 다사읍 (달성군)</option>
+            <option value="715">715 본동 (달서구)</option>
+            <option value="716">716 산격동 (북구)</option>
+            <option value="717">717 화원읍 (달성군)</option>
+            <option value="718">718 내당동 (서구)</option>
+            <option value="719">719 침산동 (북구)</option>
+            <option value="720">720 남산1동 (중구)</option>
+            <option value="802">802 평리동 (서구)</option>
+            <option value="803">803 이곡동 (달서구)</option>
+            <option value="804">804 충혼탑 (남구)</option>
+            <option value="805">805 서변동 (북구)</option>
+            <option value="806">806 연호동 (수성구)</option>
+            <option value="807">807 용계동 (동구)</option>
+          </select>
+        </div>
+
+        <!-- 실시간 대기질 미니 카드 -->
+        <div class="air-quick-card">
+          <div class="air-quick-header">
+            <span class="badge-live" id="quick-air-live-badge">LIVE</span>
+            <span id="quick-air-station">수창동(중구)</span>
+            <small id="quick-air-time">17:00 기준</small>
+          </div>
+          <div class="air-quick-body">
+            <div class="quick-metric">
+              <span class="qm-label">미세먼지 (PM10)</span>
+              <div class="qm-row">
+                <span class="status-icon-circle status-good" id="quick-pm10-icon">😊</span>
+                <strong class="qm-val" id="quick-pm10-val">27</strong>
+                <span class="qm-unit">㎍/㎥</span>
+                <span class="qm-tag tag-good" id="quick-pm10-tag">좋음</span>
+              </div>
+            </div>
+            <div class="quick-metric">
+              <span class="qm-label">초미세먼지 (PM2.5)</span>
+              <div class="qm-row">
+                <span class="status-icon-circle status-good" id="quick-pm25-icon">😊</span>
+                <strong class="qm-val" id="quick-pm25-val">17</strong>
+                <span class="qm-unit">㎍/㎥</span>
+                <span class="qm-tag tag-good" id="quick-pm25-tag">좋음</span>
+              </div>
+            </div>
+            <div class="quick-metric">
+              <span class="qm-label">통합대기환경지수 (CAI)</span>
+              <div class="qm-row">
+                <span class="status-icon-circle status-moderate" id="quick-cai-icon">🙂</span>
+                <strong class="qm-val" id="quick-cai-val">67</strong>
+                <span class="qm-unit" id="quick-cai-sub">O3</span>
+                <span class="qm-tag tag-moderate" id="quick-cai-tag">보통</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 데모용: 특정 날짜 대기 데이터 지도 반영 버튼 -->
+        <div id="demo-date-wrap" style="margin-top: 8px;">
+          <button id="btn-demo-date" class="demo-date-btn" onclick="loadDemoAirDate('2026-03-24')" title="2026-03-24 대기 데이터로 지도 색상 업데이트 (데모용)">
+            <i data-lucide="calendar-clock"></i>
+            <span>📅 2026-03-24 대기 데모 보기</span>
+          </button>
+          <button id="btn-demo-reset" class="demo-date-btn demo-reset-btn" onclick="resetToRealtimeAir()" title="실시간 데이터로 복귀" style="display:none;">
+            <i data-lucide="radio"></i>
+            <span>↩ 실시간 데이터로 복귀</span>
+          </button>
+          <!-- 기존 노선 표시 및 개별 코스(A, B, C) 선택 제어 바 -->
+          <div id="dummy-course-filter-group" class="dummy-course-filter-group">
+            <div class="dummy-filter-header">
+              <span class="dummy-filter-title">기존 노선 표시</span>
+              <button id="btn-dummy-all-toggle" class="dummy-filter-all-btn" onclick="toggleAllDummyCourses()" title="전체 켜기 / 전체 끄기">전체 켜기</button>
+            </div>
+            <div class="dummy-filter-buttons">
+              <button id="btn-dummy-course-A" class="dummy-sub-btn" onclick="toggleDummyCourse('A')" style="--course-color: #ef4444;" title="기존 노선 A (빨간색)">
+                <span class="course-dot" style="background-color: #ef4444; box-shadow: 0 0 6px #ef4444;"></span>
+                <span>노선 A (빨강)</span>
+              </button>
+              <button id="btn-dummy-course-B" class="dummy-sub-btn" onclick="toggleDummyCourse('B')" style="--course-color: #f97316;" title="기존 노선 B (주황색)">
+                <span class="course-dot" style="background-color: #f97316; box-shadow: 0 0 6px #f97316;"></span>
+                <span>노선 B (주황)</span>
+              </button>
+              <button id="btn-dummy-course-C" class="dummy-sub-btn" onclick="toggleDummyCourse('C')" style="--course-color: #a855f7;" title="기존 노선 C (보라색)">
+                <span class="course-dot" style="background-color: #a855f7; box-shadow: 0 0 6px #a855f7;"></span>
+                <span>노선 C (보라)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 지도 범례: 미세먼지(PM10) 대기질 등급 & 관제 도로망 -->
+        <div class="legend-box" id="map-legend">
+          <div class="legend-title">미세먼지(PM10) 대기질 범례</div>
+          <div class="legend-item">
+            <span class="legend-box-color" style="background: #3b82f6; box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);"></span>
+            <span>좋음 (0 ~ 30 ㎍/㎥)</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-box-color" style="background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);"></span>
+            <span>보통 (31 ~ 80 ㎍/㎥)</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-box-color" style="background: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);"></span>
+            <span>나쁨 (81 ~ 150 ㎍/㎥)</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-box-color" style="background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);"></span>
+            <span>매우나쁨 (151 ㎍/㎥ ~)</span>
+          </div>
+          <div style="height: 1px; background: var(--bg-border); margin: 3px 0;"></div>
+          <div class="legend-item">
+            <span class="legend-box-line" style="background: #06b6d4; box-shadow: 0 0 8px rgba(6, 182, 212, 0.85);"></span>
+            <span style="color: #f1f5f9; font-weight: 600;">분진차량 운행 도로망</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-pin-icon" style="background: #0ea5e9; border: 2px solid #ffffff; width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px rgba(14, 165, 233, 0.8);"></span>
+            <span>도시대기측정소 (19개소)</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-pin-icon" style="background: #e11d48; border: 2px solid #ffffff; width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px rgba(225, 29, 72, 0.8);"></span>
+            <span>도로변대기측정소 (6개소)</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 3. 우측 하단 15개 분진흡입 운행구간 관제 카드 -->
+    <div class="zone-dashboard-card" id="zone-dashboard-card"></div>
+
+    <!-- 3-1. 실시간 분진순찰 전담 내비게이션 HUD 패널 (차량 운전석 / 태블릿 전용) -->
+    <div id="patrol-nav-hud" class="patrol-nav-hud" style="display: none;">
+      <!-- 상단 컨트롤 헤더 -->
+      <div class="pnh-header">
+        <div class="pnh-status-group">
+          <span class="pnh-live-badge"><span class="pnh-pulse-dot"></span> LIVE NAV</span>
+          <span class="pnh-mode-pill" id="pnh-mode-pill">🛰️ GPS 수신 대기</span>
+          <span class="pnh-zone-tag" id="pnh-zone-tag">1구간 순찰</span>
+        </div>
+        <div class="pnh-actions">
+          <button class="pnh-speed-toggle-btn" id="btn-pnh-speed-mult" title="가상 주행 64배속 초고속 모드">
+            <i data-lucide="zap"></i>
+            <span id="pnh-speed-mult-text">64x 초고속</span>
+          </button>
+          <button class="pnh-sim-toggle-btn" id="btn-pnh-toggle-sim" onclick="toggleNavSimulationMode()" title="실제 GPS ↔ 가상 주행 모드 전환">
+            <i data-lucide="play-circle" id="pnh-sim-icon"></i>
+            <span id="pnh-sim-text">가상 주행</span>
+          </button>
+          <button class="pnh-close-btn" onclick="stopPatrolNavigation()" title="내비게이션 종료">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 메인 턴바이턴 길안내 영역 -->
+      <div class="pnh-guidance-body">
+        <div class="pnh-road-info">
+          <div class="pnh-road-name" id="pnh-road-name">정화 노선 진입 대기 중...</div>
+          <div class="pnh-road-sub" id="pnh-road-sub">대구 분진흡입 전담 순찰 경로</div>
+          <div class="pnh-sub-indicator" id="pnh-sub-indicator">
+            <span class="pnh-badge-state" id="pnh-badge-state">준비</span>
+            <span class="pnh-rec-speed" id="pnh-rec-speed">권장속도: 15~20km/h (저속 흡입)</span>
+          </div>
+        </div>
+
+        <div class="pnh-air-badge" id="pnh-air-badge">
+          <div class="pnh-air-label">구간 대기질(PM10)</div>
+          <div class="pnh-air-val" id="pnh-air-val">-- <small>㎍/㎥</small></div>
+        </div>
+      </div>
+
+      <!-- 하단 주행 통계 & 정화 완료 진행률 게이지 -->
+      <div class="pnh-footer">
+        <div class="pnh-progress-container">
+          <div class="pnh-prog-labels">
+            <span>정화 진척률: <strong id="pnh-prog-pct">0%</strong></span>
+            <span>남은 거리: <strong id="pnh-rem-dist">0.0 km</strong></span>
+          </div>
+          <div class="pnh-prog-track">
+            <div class="pnh-prog-bar" id="pnh-prog-bar" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 실시간 인터랙티브 지도 (일반/위성사진 토글 + 행정구역 & 도로망 투명 오버레이) -->
+    <div id="road-view" class="map-viewport">
+      <div id="map" style="width: 100%; height: 100%;"></div>
+    </div>
+
+    <!-- 네이버지도 우측 상단 플로팅 맵 컨트롤러 (대형 맵 스위처 & 오버레이 패널) -->
+    <div class="naver-floating-type-box" id="naver-floating-box">
+      <!-- 1. 베이스맵 전환: [일반지도] [위성사진] -->
+      <div class="nft-type-wrap">
+        <button class="nft-btn active" id="nft-btn-std" onclick="setMasterView('clean')" title="일반 도로 지도 (선명한 다크 모드)">
+          <i data-lucide="map"></i>
+          <span>일반지도</span>
+        </button>
+        <button class="nft-btn" id="nft-btn-sat" onclick="setMasterView('satellite')" title="고해상도 항공 위성영상">
+          <i data-lucide="satellite"></i>
+          <span>위성사진</span>
+        </button>
+      </div>
+      <!-- 2. 오버레이 레이어 토글: [행정구역] [운행구간(13)] [구간 노선망(13)] [측정소] -->
+      <div class="nft-layer-wrap">
+        <button class="nft-layer-item active" id="nft-layer-dist" onclick="toggleNaverOverlay('district')" title="대구 자치구 & 142개 읍·면·동 행정구역 경계 표시 (On/Off)">
+          <span class="nft-dot"></span>
+          <i data-lucide="shapes" class="nft-layer-icon"></i>
+          <span>행정구역</span>
+        </button>
+        <button class="nft-layer-item" id="nft-layer-zone" onclick="toggleNaverOverlay('zones')" title="대구 분진흡입 운행구간 & 번호 배지 표시 (On/Off)">
+          <span class="nft-dot"></span>
+          <i data-lucide="layers" class="nft-layer-icon"></i>
+          <span>운행구간</span>
+        </button>
+        <button class="nft-layer-item active" id="nft-layer-route" onclick="toggleNaverOverlay('routes')" title="대구 운행구간별 전담 도로망 노선 표시 (On/Off)">
+          <span class="nft-dot"></span>
+          <i data-lucide="truck" class="nft-layer-icon"></i>
+          <span>구간 노선망</span>
+        </button>
+        <button class="nft-layer-item active" id="nft-layer-station" onclick="toggleNaverOverlay('stations')" title="대구 25개 실시간 대기 측정소 핀 위치 표시 (On/Off)">
+          <span class="nft-dot"></span>
+          <i data-lucide="map-pin" class="nft-layer-icon"></i>
+          <span>측정소</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 5. 대구광역시 실시간 대기정보(air.daegu.go.kr) 모달 뷰어                    -->
+    <!-- ========================================================================= -->
+    <div class="air-modal-backdrop" id="air-modal" style="display: none;">
+      <div class="air-modal-container">
+        <!-- 모달 헤더 -->
+        <div class="air-modal-header">
+          <div class="amh-title-wrap">
+            <div class="amh-icon">
+              <i data-lucide="activity"></i>
+            </div>
+            <div>
+              <h2 class="amh-title">대구광역시 실시간 통합대기환경지수 조회</h2>
+              <div class="amh-sub">
+                출처: <strong>대구광역시 실시간 대기정보 시스템</strong> (air.daegu.go.kr) 실시간 크롤링 연동
+              </div>
+            </div>
+          </div>
+
+          <div class="amh-controls">
+            <div class="modal-control-group">
+              <label for="modal-date-input"><i data-lucide="calendar" style="width:16px; height:16px;"></i> 조회일자</label>
+              <input type="date" id="modal-date-input" class="custom-select" style="width: 165px; height: 40px; cursor: pointer;" title="조회 날짜 선택">
+            </div>
+            <div class="modal-control-group">
+              <label for="modal-hour-select"><i data-lucide="clock" style="width:16px; height:16px;"></i> 조회시간</label>
+              <select id="modal-hour-select" class="custom-select" style="width: 185px; height: 40px; cursor: pointer;">
+                <option value="all">전체 (일평균/최신)</option>
+                <option value="01">01:00</option>
+                <option value="02">02:00</option>
+                <option value="03">03:00</option>
+                <option value="04">04:00</option>
+                <option value="05">05:00</option>
+                <option value="06">06:00</option>
+                <option value="07">07:00</option>
+                <option value="08">08:00</option>
+                <option value="09">09:00</option>
+                <option value="10">10:00</option>
+                <option value="11">11:00</option>
+                <option value="12">12:00</option>
+                <option value="13">13:00</option>
+                <option value="14">14:00</option>
+                <option value="15">15:00</option>
+                <option value="16">16:00</option>
+                <option value="17">17:00</option>
+                <option value="18">18:00</option>
+                <option value="19">19:00</option>
+                <option value="20">20:00</option>
+                <option value="21">21:00</option>
+                <option value="22">22:00</option>
+                <option value="23">23:00</option>
+                <option value="24">24:00</option>
+              </select>
+            </div>
+            <div class="amh-buttons">
+              <button class="action-btn" id="btn-air-today" onclick="refreshAirModal(null, 'all', true)" title="오늘 최신 실시간 데이터로 복귀" style="height: 40px; padding: 0 14px;">
+                <i data-lucide="clock"></i>
+                <span>오늘 실시간</span>
+              </button>
+              <button class="action-btn" id="btn-modal-refresh" onclick="refreshAirModal(document.getElementById('modal-date-input')?.value || currentAirDate, document.getElementById('modal-hour-select')?.value || currentAirHour, true)" title="실시간 데이터 새로고침" style="height: 40px; padding: 0 14px;">
+                <i data-lucide="refresh-cw"></i>
+                <span>새로고침</span>
+              </button>
+              <button class="modal-close-btn" onclick="closeAirModal()" style="height: 40px; width: 40px;">
+                <i data-lucide="x"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 모달 본문: 시간대별 테이블 뷰 (사용자 첨부 사진 규격 완벽 일치) -->
+        <div class="air-modal-body">
+          <div class="air-table-wrapper">
+            <table class="daegu-air-table" id="daegu-air-table">
+              <thead>
+                <tr>
+                  <th>측정소</th>
+                  <th>자치구</th>
+                  <th>PM10 (㎍/㎥)</th>
+                  <th>PM2.5 (㎍/㎥)</th>
+                  <th>대기등급</th>
+                </tr>
+              </thead>
+              <tbody id="district-summary-tbody">
+                <tr>
+                  <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-muted);">
+                    대구 25개 측정소 대기 정보를 불러오는 중입니다...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 모달 푸터: 범례 가이드 -->
+        <!-- 모달 푸터: 범례 가이드 (환경부 통합대기환경지수 기준) -->
+        <div class="air-modal-footer">
+          <div class="grade-legend-row">
+            <span class="legend-item"><span class="status-dot status-good"></span> 좋음 (PM10 ≤30 / PM2.5 ≤15)</span>
+            <span class="legend-item"><span class="status-dot status-moderate"></span> 보통 (31~80 / 16~35)</span>
+            <span class="legend-item"><span class="status-dot status-bad"></span> 나쁨 (81~150 / 36~75)</span>
+            <span class="legend-item"><span class="status-dot status-very-bad"></span> 매우나쁨 (151~ / 76~)</span>
+          </div>
+          <a href="https://air.daegu.go.kr/index.do?menu_id=00000801&menu_link=%2Ffront%2FrealTimeAir%2FrealTimeTotalAirView.do&sttn_cd=701&from=2026-10-01&fromtime=00&to=2026-10-01&totime=23" target="_blank" class="official-link">
+            <span>공식 사이트 원문 바로가기</span>
+            <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 6. 1구간 실시간 대기반응형 분진흡입차량 동적 최적 노선 종합 관제 패널       -->
+    <!-- ========================================================================= -->
+    <div class="dynamic-route-modal-backdrop" id="dynamic-route-modal" style="display: none;">
+      <div class="dynamic-route-modal-container">
+        <!-- 헤더 -->
+        <div class="drm-header">
+          <div class="drm-title-group">
+            <div class="drm-icon-wrap">
+              <i data-lucide="zap"></i>
+            </div>
+            <div>
+              <div class="drm-title">
+                <span>실시간 최적 정화 노선</span>
+                <span class="zdc-tag" style="background: rgba(6, 182, 212, 0.2); color: #38bdf8; border-color: rgba(6, 182, 212, 0.4); font-size: 12px; padding: 2px 8px;">
+                  추천 경로 1개
+                </span>
+              </div>
+              <div class="drm-sub" id="drm-generated-time">
+                생성시각: 실시간 계산 완료 · 추천 경로 1개
+              </div>
+            </div>
+          </div>
+          <button class="drm-close-btn" onclick="closeDynamicRoutePanel()" title="창 닫기">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <!-- 본문 -->
+        <div class="drm-body">
+          <!-- 1. 실시간 대기 측정 현황 (통합 권역 평균 단일 풀-바) -->
+          <div class="drm-air-banner" id="drm-air-banner">
+            <div class="air-station-pill air-station-pill-full" id="drm-air-pill-full" style="border-left-color: #10b981;">
+              <div class="asp-left">
+                <i data-lucide="shield-check" id="drm-air-icon" style="color: #10b981; width: 18px; height: 18px;"></i>
+                <div class="asp-label" id="drm-air-label">1구간 통합 권역 상태</div>
+              </div>
+              <div class="asp-val" id="drm-air-avg">
+                평균: <strong>--</strong> ㎍/㎥ (<span id="drm-air-grade">--</span>)
+              </div>
+            </div>
+          </div>
+
+          <!-- 차량별 함대(Fleet) 탭 필터 바 (차량당 <80km 한도 제약 표기) -->
+          <div class="drm-fleet-tabs-row" id="drm-fleet-tabs"></div>
+
+          <!-- 2열 그리드 컨테이너: 좌측 작업 지시서 테이블, 우측 4개 KPI 지표 카드 -->
+          <div class="drm-two-column-layout">
+            <!-- 좌측 열: 작업 지시서 테이블 -->
+            <div class="drm-left-col">
+              <div class="drm-section-header">
+                <span style="display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="list-ordered" style="width: 15px; height: 15px; color: #38bdf8;"></i>
+                  순회 작업 지시서 (Waypoints)
+                </span>
+              </div>
+              <div class="drm-table-wrapper">
+                <table class="drm-stops-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 48px;">순번</th>
+                      <th>경유 거점 및 도로명</th>
+                      <th style="width: 80px;">관할 동</th>
+                      <th style="width: 95px;">추정 PM10</th>
+                    </tr>
+                  </thead>
+                  <tbody id="drm-stops-tbody">
+                    <tr>
+                      <td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">
+                        추천경로를 생성하면 작업 지시서가 표시됩니다.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 우측 열: 4개 KPI 지표 카드 (2x2) -->
+            <div class="drm-right-col">
+              <div class="drm-section-header">
+                <span style="display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="bar-chart-3" style="width: 15px; height: 15px; color: #10b981;"></i>
+                  핵심 운행 효과 및 성과 분석 (KPI)
+                </span>
+              </div>
+              <div class="drm-kpi-grid">
+                <div class="drm-kpi-card">
+                  <div class="dk-label">평균 운행 거리</div>
+                  <div class="dk-val-row">
+                    <span class="dk-val text-emerald" id="drm-kpi-eff">--</span>
+                    <span class="dk-unit">km</span>
+                    <span class="dk-badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399;" id="drm-kpi-eff-gain">--</span>
+                  </div>
+                  <div class="dk-sub-comparison" id="drm-sub-eff">--</div>
+                </div>
+
+                <div class="drm-kpi-card">
+                  <div class="dk-label">PM10 예상 저감률 <small style="font-weight:500;color:#94a3b8;">(대리지표)</small></div>
+                  <div class="dk-val-row">
+                    <span class="dk-val" style="color: #38bdf8;" id="drm-kpi-dust">--</span>
+                    <span class="dk-unit">%</span>
+                    <span class="dk-badge" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8;" id="drm-kpi-dust-gain">--</span>
+                  </div>
+                  <div class="dk-sub-comparison" id="drm-sub-dust">--</div>
+                </div>
+
+                <div class="drm-kpi-card">
+                  <div class="dk-label">기존경로 성능비교</div>
+                  <div class="dk-val-row">
+                    <span class="dk-val" id="drm-kpi-dist">--</span>
+                    <span class="dk-unit">%</span>
+                    <span class="dk-badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;" id="drm-kpi-dist-save">--</span>
+                  </div>
+                  <div class="dk-sub-comparison" id="drm-sub-dist">--</div>
+                </div>
+
+                <div class="drm-kpi-card">
+                  <div class="dk-label">운행 후 PM10 대리지표</div>
+                  <div class="dk-val-row">
+                    <span class="dk-val" id="drm-kpi-time">--</span>
+                    <span class="dk-unit">㎍/㎥</span>
+                    <span class="dk-badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;" id="drm-kpi-time-save">--</span>
+                  </div>
+                  <div class="dk-sub-comparison" id="drm-sub-time">--</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 푸터 -->
+        <div class="drm-footer">
+          <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="check-circle" style="color: #10b981; width: 15px; height: 15px;"></i>
+            <span>대구광역시 보건환경연구원 25개 대기측정망 및 OpenStreetMap 도로 경로 · 고속도로 도로등급 검사</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 지도 및 13개 최적 균형 운행구간 & 실시간 대기 스크립트 -->
+  <script src="{{ url_for('static', filename='js/zones.js') }}?v=20261004_v1_dense_grid_v3" onerror="this.onerror=null; this.src='../static/js/zones.js?v=20261004_v1_dense_grid_v3';"></script>
+  <script src="{{ url_for('static', filename='js/map.js') }}?v=20261004_v1_dense_grid_v3" onerror="this.onerror=null; this.src='../static/js/map.js?v=20261004_v1_dense_grid_v3';"></script>
+  <script>
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  </script>
+</body>
+</html>

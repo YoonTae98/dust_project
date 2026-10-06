@@ -1,0 +1,24 @@
+{
+  "schema": "paired-roadside-pm10-v1",
+  "status": "official_reference_transfer_scenario",
+  "endpoint": "road_resuspended_pm10_ug_m3",
+  "protocol_id": "dust_suction_reference_30_to_60_min",
+  "beta": 0.433,
+  "before_range": [
+    0,
+    null
+  ],
+  "coefficient_origin": "MOE_Keco_reported_vehicle_type_mean_2023_04_26",
+  "sources": [
+    "https://www.airkorea.or.kr/portal/web/board/7/7173/?page=13"
+  ],
+  "measurement_window": {
+    "before": "10–30 min before cleaning",
+    "after": "30–60 min after cleaning"
+  },
+  "validation": {
+    "status": "not_validated_for_Daegu_routes",
+    "reported_mean_is_not_per_road_guarantee": true,
+    "concentration_applicability_range": "not_reported"
+  }
+}
