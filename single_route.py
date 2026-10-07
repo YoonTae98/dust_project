@@ -264,7 +264,7 @@ def generate(engine, zone_id, date_str=None, hour_str=None):
 def _generate(e, zone_id, date_str, hour_str):
     if zone_id not in e.ZONE_POLYGONS:
         raise ValueError('지원하지 않는 구역입니다.')
-    _, lengths, depot_candidates = baseline_budget(e.collector.get_routes(), zone_id, multiplier=1.0)
+    _, lengths, depot_candidates = baseline_budget(e.collector.get_routes(), zone_id, multiplier=1.1)
     avg_baseline_km = sum(lengths) / 3
     if not depot_candidates:
         raise ValueError('이 구역에 유효한 기존 코스 기점 좌표가 없습니다.')
@@ -323,12 +323,12 @@ def _generate(e, zone_id, date_str, hour_str):
 
     zone_mean_pm10 = sum(n['local_pm10'] for n in all_raw_nodes) / len(all_raw_nodes)
 
-    # 거리 예산 배율: 기존 A·B·C 평균 거리의 1.0배(100%) 이내로 엄격 고정
-    budget_mult = 1.0
+    # 거리 예산 배율: 기존 A·B·C 평균 거리의 1.1배(110%) 적용 (고속도로 이동거리는 예산 산정에서 제외)
+    budget_mult = 1.1
     budget = round(avg_baseline_km * budget_mult, 2)
     sorted_nodes = sorted(all_raw_nodes, key=lambda n: n['severity_pm'], reverse=True)
-    # 거리 예산(budget)에 맞춘 컴팩트한 고농도 거점 풀(최대 26개)로 빠른 연산속도 확보
-    needed_candidates = max(16, min(len(all_raw_nodes), min(26, int(budget * 0.85) + 2)))
+    # 거리 예산(budget)에 맞춘 컴팩트한 고농도 거점 풀(최대 28개)로 빠른 연산속도 확보
+    needed_candidates = max(16, min(len(all_raw_nodes), min(28, int(budget * 0.85) + 2)))
     nodes = sorted_nodes[:needed_candidates]
 
     # PM10 효과 평가용 후보군 (구역 내 행정동별 후보 거점 기준)
@@ -438,24 +438,29 @@ def _generate(e, zone_id, date_str, hour_str):
     sequence = list(best_sol['sequence'])
     coords = best_sol['coords']
 
-    # 3. 최적 차고지에 대해서만 실도로 경로(Valhalla) 단 1회 생성 (불필요한 반복 네트워크 호출 제거)
-    for _ in range(2):
-        if len(sequence) <= 1:
+    # 3. 최적 차고지에 대해 실도로 경로(Valhalla) 생성 및 순수 청소거리(고속도로 제외) 기준 예산 준수
+    for _ in range(5):
+        if len(sequence) <= 2:
             break
         result = osrm('route', [coords[i] for i in sequence],
                       'overview=full&geometries=geojson&steps=true&continue_straight=false')
         route = result['routes'][0]
-        actual = float(route['distance']) / 1000
-        if actual <= budget * 1.05:  # 5% 허용 오차
+        segments = extract_route_segments(route, default_color='#06b6d4', highway_color='#94a3b8')
+        cleaning_dist = sum(s['distance_km'] for s in segments if s['type'] == 'cleaning')
+        if cleaning_dist <= budget:
             break
-        # 예산 초과 시 보상 최하위 거점 1개 제거 후 1회 재연결
-        sequence.pop(-1)
+        excess_km = cleaning_dist - budget
+        # 초과 청소거리에 비례하여 보상 최하위 거점들을 필요한 만큼 한 번에 제거
+        pop_count = min(len(sequence) - 2, max(1, int(excess_km / 2.5)))
+        candidates_to_remove = sorted(range(1, len(sequence)), key=lambda j: rewards[sequence[j]])[:pop_count]
+        for idx in sorted(candidates_to_remove, reverse=True):
+            sequence.pop(idx)
     else:
         result = osrm('route', [coords[i] for i in sequence],
                       'overview=full&geometries=geojson&steps=true&continue_straight=false')
         route = result['routes'][0]
-        actual = float(route['distance']) / 1000
 
+    actual = float(route['distance']) / 1000
     chosen = [nodes[i-1] for i in sequence[1:]]
     if not chosen:
         raise ValueError('거리 예산 내에서 생성 가능한 편도 거점이 없습니다.')
@@ -468,12 +473,18 @@ def _generate(e, zone_id, date_str, hour_str):
         actual_arrival += float(leg['distance']) / 1000
         arrival_terms.append(node['visit_reward'] * actual_arrival)
 
+    segments = extract_route_segments(route, default_color='#06b6d4', highway_color='#94a3b8')
+    cleaning_dist = sum(s['distance_km'] for s in segments if s['type'] == 'cleaning')
+    transit_dist = sum(s['distance_km'] for s in segments if s['type'] == 'highway_transit')
+    has_transit = transit_dist > 0.05
+
     for ed in evaluated_depots:
         if ed.get('course_code') == best_depot['course_code']:
             ed['selected'] = True
             ed['visited_count'] = len(chosen)
             ed['reward_score'] = round(score, 2)
             ed['actual_dist_km'] = round(actual, 2)
+            ed['cleaning_dist_km'] = round(cleaning_dist, 2)
 
     points = [[lat, lng] for lng, lat in route['geometry']['coordinates']]
     input_values = sorted((str(n['id']), n['local_pm10']) for n in nodes)
@@ -487,12 +498,6 @@ def _generate(e, zone_id, date_str, hour_str):
 
     title = f'{zone_id}구간 단일 추천 경로'
     color = '#06b6d4'
-
-    # 일반 청소 작업 구간(사이언)과 고속도로 단순 이동 구간(회색 점선) 분리
-    segments = extract_route_segments(route, default_color=color, highway_color='#94a3b8')
-    cleaning_dist = sum(s['distance_km'] for s in segments if s['type'] == 'cleaning')
-    transit_dist = sum(s['distance_km'] for s in segments if s['type'] == 'highway_transit')
-    has_transit = transit_dist > 0.05
 
     stops = []
     for idx, node in enumerate(chosen, 1):
@@ -519,18 +524,19 @@ def _generate(e, zone_id, date_str, hour_str):
                zone_avg_pm10=round(avg_pm10, 1),
                zone_avg_pm25=round(avg_pm25, 1) if avg_pm25 is not None else None,
                primary_station=station_slots[0], secondary_station=station_slots[-1])
-    distance = round(actual, 2)
+    distance = round(cleaning_dist, 2)
     minutes = round(route['duration'] / 60, 1)
     badge = f"{observation['label']} · 편도 집중 청소" + (" · 고속도로 이동 분리" if has_transit else "")
-    description = '기존 평균 거리 이내 종합 대기질(PM10·PM2.5) 심각도 초과 방문 점수 우선 편도 집중 노선. 출발점 복귀 불필요.'
+    description = '기존 평균 거리(1.1배 이내) 종합 대기질(PM10·PM2.5) 심각도 초과 방문 점수 우선 편도 집중 노선. 고속도로는 이동거리로 별도 분리.'
     item = dict(vehicle_id=f'Z{zone_id:02d}-SINGLE', vehicle_num=1, vehicle_name=title,
                 role_title='거리 예산 기반 고농도 거점 방문', zone_area=e.ZONE_NAMES[zone_id],
                 color=color, route_title=title, total_dist_km=distance,
-                cleaning_dist_km=round(cleaning_dist, 2),
+                cleaning_dist_km=distance,
+                gross_travel_dist_km=round(actual, 2),
                 transit_highway_dist_km=round(transit_dist, 2),
                 has_highway_transit=has_transit,
                 max_dist_limit_km=budget, is_within_limit=True,
-                headroom_pct=round((budget-actual)/budget*100, 1), est_work_min=minutes,
+                headroom_pct=round((budget-cleaning_dist)/budget*100, 1), est_work_min=minutes,
                 avg_target_pm10=round(avg_pm10, 1),
                 avg_target_pm25=round(avg_pm25, 1) if avg_pm25 is not None else None,
                 points=points, segments=segments, stops=stops,
@@ -561,6 +567,8 @@ def _generate(e, zone_id, date_str, hour_str):
                            evaluated_depots=evaluated_depots),
                 air_status=air, fleet_routes=[item], routes=[item],
                 fleet_summary=dict(active_vehicles_count=1, total_fleet_dist_km=distance,
+                    cleaning_fleet_dist_km=distance, gross_fleet_dist_km=round(actual, 2),
+                    transit_highway_dist_km=round(transit_dist, 2),
                     total_fleet_work_min=minutes, max_vehicle_dist_limit_km=budget,
                     all_within_limit=True, strategy_badge=badge, strategy_desc=description,
                     is_emergency=False, total_fleet_dust_kg=None, fleet_efficiency=None),

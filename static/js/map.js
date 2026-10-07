@@ -2483,7 +2483,7 @@ function renderDynamicRouteOnMap(data, shouldZoom = false) {
           ${route.route_title || route.name}
         </div>
         <div style="font-size: 0.84rem; color: #94a3b8; margin-bottom: 8px;">
-          총 운행 <strong>${route.total_dist_km}km</strong> / 목표 ${Number(route.max_dist_limit_km).toFixed(2)}km · 소요 <strong>${route.est_work_min}분</strong>
+          청소 작업 <strong>${route.cleaning_dist_km || route.total_dist_km}km</strong> / 목표 ${Number(route.max_dist_limit_km).toFixed(2)}km · 소요 <strong>${route.est_work_min}분</strong>
         </div>
         ${route.has_highway_transit ? `
         <div style="display: flex; gap: 6px; margin-bottom: 8px; font-size: 0.76rem;">
@@ -2564,24 +2564,24 @@ function renderDynamicRouteOnMap(data, shouldZoom = false) {
       dynamicRouteMarkersGroup.addLayer(poly);
     }
 
-    // 1-1. 각 차량 운행 노선 경로 위에 '차량 운행 거리' 네온 플로팅 배지 마커 생성
+    // 1-1. 각 차량 운행 노선 경로 위에 '순수 청소 거리' 네온 플로팅 배지 마커 생성
     if (route.points && route.points.length > 0) {
       const midIdx = Math.floor(route.points.length / 2);
       const midPoint = route.points[midIdx] || route.points[0];
 
       const distBadgeHtml = `
-        <div class="fleet-route-dist-badge" style="--veh-color: ${routeColor};" title="추천 경로 ${route.total_dist_km}km · ${data.observation_context?.label || ''}">
+        <div class="fleet-route-dist-badge" style="--veh-color: ${routeColor};" title="추천 청소구간 ${route.cleaning_dist_km || route.total_dist_km}km · ${data.observation_context?.label || ''}">
           <span class="frd-dot" style="background: ${routeColor};"></span>
-          <span class="frd-name">추천 경로</span>
-          <span class="frd-km">${route.total_dist_km}km</span>
+          <span class="frd-name">추천 청소구간</span>
+          <span class="frd-km">${route.cleaning_dist_km || route.total_dist_km}km</span>
         </div>
       `;
 
       const distBadgeIcon = L.divIcon({
         html: distBadgeHtml,
         className: 'fleet-route-badge-container',
-        iconSize: [175, 28],
-        iconAnchor: [87, 14]
+        iconSize: [185, 28],
+        iconAnchor: [92, 14]
       });
 
       const distMarker = L.marker(midPoint, { icon: distBadgeIcon, zIndexOffset: 920 });

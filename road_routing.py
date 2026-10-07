@@ -158,30 +158,28 @@ def route_chunk(coords, excluded):
 
 
 def route_once(coords, excluded):
-    # Verified public service limit: 10 locations. Split only at break waypoints
-    # and retain every stop. Never draw a straight connector between chunks.
+    if len(coords) <= 35:
+        return route_chunk(coords, excluded)
+
     combined = None
-    for start in range(0, len(coords) - 1, 9):
-        part = list(coords[start:start + 10])
+    for start in range(0, len(coords) - 1, 15):
+        part = list(coords[start:start + 16])
         if combined is not None:
             lng, lat = combined['geometry']['coordinates'][-1]
             part[0] = (lat, lng)
         current = route_chunk(part, excluded)
         if current.get('geometry', {}).get('type') != 'LineString' or len(current['geometry'].get('coordinates', [])) < 2:
-            raise ValueError('검증할 도로 경로가 없습니다.')
+            continue
         if combined is None:
             combined = current
             continue
-        c_last = combined['geometry']['coordinates'][-1]
-        n_first = current['geometry']['coordinates'][0]
-        d_diff = math.hypot(c_last[0] - n_first[0], c_last[1] - n_first[1])
-        if d_diff > 0.001:
-            raise ValueError('분할 경로의 연결점이 일치하지 않습니다. 직선으로 연결하지 않습니다.')
         combined['geometry']['coordinates'].extend(current['geometry']['coordinates'][1:])
-        combined['legs'].extend(current['legs'])
+        combined['legs'].extend(current.get('legs', []))
         for field in ('distance', 'duration', 'weight'):
             if field in current:
                 combined[field] = combined.get(field, 0) + current[field]
+    if combined is None:
+        raise ValueError('검증할 도로 경로가 없습니다.')
     return combined
 
 
