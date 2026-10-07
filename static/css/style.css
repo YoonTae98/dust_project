@@ -210,14 +210,23 @@ html, body {
 }
 
 .air-pill-status {
-  width: 22px;
+  width: 28px;
   height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  flex-shrink: 0;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
   color: #fff;
+}
+
+.air-pill-status i,
+.air-pill-status svg {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
 
 .status-good { background: var(--air-good); }
@@ -4105,6 +4114,8 @@ body.nav-active .app-header,
 body.nav-active #control-panel,
 body.nav-active #zone-dashboard-card,
 body.nav-active #naver-floating-box,
+body.nav-active #city-avg-card,
+body.nav-active .city-avg-card,
 body.nav-active .leaflet-control-zoom,
 body.nav-active .leaflet-control-attribution,
 body.nav-active #map-legend {

@@ -738,7 +738,7 @@ function renderZoneDashboardCard(selectedZone = null) {
     : `-- <span class="metric-sub-val">(경로 생성 대기)</span>`;
   const improve = currentEffect?.ai_improvement_pct;
   const compareMetricHtml = (improve !== null && improve !== undefined && Number.isFinite(Number(improve)))
-    ? `${Number(improve) >= 0 ? '+' : ''}${Number(improve).toFixed(1)}% <span class="metric-sub-val">(기존 평균 -${Number(currentEffect.abc_mean_reduction_pct).toFixed(1)}%)</span>`
+    ? `${Number(improve) >= 0 ? '+' : ''}${Number(improve).toFixed(1)}%`
     : `-- <span class="metric-sub-val">(비교 계산 대기)</span>`;
 
   card.innerHTML = `
