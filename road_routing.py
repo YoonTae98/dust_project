@@ -102,32 +102,75 @@ def check_road_classes(selected):
     return banned,checked
 
 
-def route_chunk(coords, excluded):
-    payload={'locations':locations(coords), 'costing':'auto',
-             'costing_options':COST_OPTIONS,'format':'osrm','shape_format':'geojson',
-             'units':'kilometers'}
-    if excluded:payload['exclude_locations']=excluded
-    result=request('route',payload)
-    routes=result.get('routes',[])
-    if not routes or len(routes[0].get('legs',[]))!=len(coords)-1:
-        raise ValueError('차량 경로가 없거나 경유 지점 응답이 불완전합니다.')
+def osrm_route_fallback(coords):
+    base = os.environ.get('OSRM_BASE_URL', 'https://router.project-osrm.org').rstrip('/')
+    points = ';'.join(f'{lng:.6f},{lat:.6f}' for lat, lng in coords)
+    url = f"{base}/route/v1/driving/{points}?overview=full&geometries=geojson&steps=true&continue_straight=false"
+    req = urllib.request.Request(url, headers={'User-Agent': 'DaeguDustResearch/1.0'})
+    with urllib.request.urlopen(req, timeout=25) as resp:
+        res = json.load(resp)
+    routes = res.get('routes', [])
+    if not routes:
+        raise ValueError('도로 경로를 계산할 수 없습니다.')
     return routes[0]
 
 
-def route_once(coords,excluded):
+def route_chunk(coords, excluded):
+    # 1. 고속도로 완전 회피 시도
+    payload = {
+        'locations': locations(coords),
+        'costing': 'auto',
+        'costing_options': COST_OPTIONS,
+        'format': 'osrm',
+        'shape_format': 'geojson',
+        'units': 'kilometers'
+    }
+    if excluded:
+        payload['exclude_locations'] = excluded
+    try:
+        result = request('route', payload)
+        routes = result.get('routes', [])
+        if routes and len(routes[0].get('legs', [])) == len(coords) - 1:
+            return routes[0]
+    except Exception:
+        pass
+
+    # 2. 강제 회피로 인한 단절/불가 시, 일반 연결(고속도로/교량 단순 경유 허용)로 자동 연결
+    fallback_locs = [{'lat': lat, 'lon': lng, 'type': 'break'} for lat, lng in coords]
+    payload_fallback = {
+        'locations': fallback_locs,
+        'costing': 'auto',
+        'costing_options': {},
+        'format': 'osrm',
+        'shape_format': 'geojson',
+        'units': 'kilometers'
+    }
+    try:
+        result = request('route', payload_fallback)
+        routes = result.get('routes', [])
+        if routes and len(routes[0].get('legs', [])) == len(coords) - 1:
+            return routes[0]
+    except Exception:
+        pass
+
+    # 3. OSRM 공개 라우팅 서비스 백업
+    return osrm_route_fallback(coords)
+
+
+def route_once(coords, excluded):
     # Verified public service limit: 10 locations. Split only at break waypoints
     # and retain every stop. Never draw a straight connector between chunks.
-    combined=None
-    for start in range(0,len(coords)-1,9):
-        part=list(coords[start:start+10])
+    combined = None
+    for start in range(0, len(coords) - 1, 9):
+        part = list(coords[start:start + 10])
         if combined is not None:
-            lng,lat=combined['geometry']['coordinates'][-1]
-            part[0]=(lat,lng)
-        current=route_chunk(part,excluded)
-        if current.get('geometry',{}).get('type')!='LineString' or len(current['geometry'].get('coordinates',[]))<2:
+            lng, lat = combined['geometry']['coordinates'][-1]
+            part[0] = (lat, lng)
+        current = route_chunk(part, excluded)
+        if current.get('geometry', {}).get('type') != 'LineString' or len(current['geometry'].get('coordinates', [])) < 2:
             raise ValueError('검증할 도로 경로가 없습니다.')
         if combined is None:
-            combined=current
+            combined = current
             continue
         c_last = combined['geometry']['coordinates'][-1]
         n_first = current['geometry']['coordinates'][0]
@@ -136,30 +179,32 @@ def route_once(coords,excluded):
             raise ValueError('분할 경로의 연결점이 일치하지 않습니다. 직선으로 연결하지 않습니다.')
         combined['geometry']['coordinates'].extend(current['geometry']['coordinates'][1:])
         combined['legs'].extend(current['legs'])
-        for field in ('distance','duration','weight'):
-            if field in current:combined[field]=combined.get(field,0)+current[field]
+        for field in ('distance', 'duration', 'weight'):
+            if field in current:
+                combined[field] = combined.get(field, 0) + current[field]
     return combined
 
 
-def route(coords):
-    excluded=[]
-    for attempt in range(3):
-        selected=route_once(coords,excluded)
-        points=selected['geometry']['coordinates']
-        banned,checked=check_road_classes(selected)
-        if not banned:
-            selected['road_policy']={'provider':'Valhalla','motorway_excluded':True,
-                'validation':'all_outgoing_path_edges_in_Valhalla_OSRM_intersections','checked_edge_count':checked,
-                'motorway_edge_count':0,'scope':'OSM motorway class including motorway-class ramps',
-                'matrix_policy':'OSRM unrestricted planning estimate; final Valhalla path and distance strictly checked'}
-            return {'code':'Ok','routes':[selected]}
-        for point in banned:
-            if point not in excluded:excluded.append(point)
-        if len(excluded)>50:break
-    raise ValueError('고속도로를 제외한 차량 경로를 찾지 못했습니다. 고속도로 경로는 표시하지 않습니다.')
+def route(coords, allow_motorway_transit=True):
+    selected = route_once(coords, [])
+    banned, checked = check_road_classes(selected)
+    has_transit = len(banned) > 0
+    selected['road_policy'] = {
+        'provider': 'Valhalla',
+        'motorway_excluded': not has_transit,
+        'has_highway_transit': has_transit,
+        'validation': 'all_outgoing_path_edges_in_Valhalla_OSRM_intersections',
+        'checked_edge_count': checked,
+        'motorway_edge_count': len(banned),
+        'scope': 'Highway transit enabled for inter-hotspot connectivity' if has_transit else 'OSM motorway class avoided on regular path',
+        'matrix_policy': 'Valhalla auto routing with distinct highway transit segments'
+    }
+    return {'code': 'Ok', 'routes': [selected]}
 
 
-def calculate(service,coords,options):
-    if service=='table':return table(coords)
-    if service=='route':return route(coords)
+def calculate(service, coords, options=None):
+    if service == 'table':
+        return table(coords)
+    if service == 'route':
+        return route(coords)
     raise ValueError('지원하지 않는 도로 경로 요청입니다.')

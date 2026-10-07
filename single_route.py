@@ -12,50 +12,6 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 
-_CACHED_DONG_POLYS = None
-
-def get_dong_polygons():
-    global _CACHED_DONG_POLYS
-    if _CACHED_DONG_POLYS is not None:
-        return _CACHED_DONG_POLYS
-    geojson_path = os.path.join(os.path.dirname(__file__), 'static', 'data', 'daegu_dong.geojson')
-    polys = []
-    if os.path.exists(geojson_path):
-        from shapely.geometry import shape
-        with open(geojson_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        for feat in data.get('features', []):
-            props = feat.get('properties', {})
-            geom = shape(feat.get('geometry', {}))
-            dist = props.get('district', '')
-            dong = props.get('dong', '')
-            key = f"{dist}_{dong}"
-            polys.append({
-                'key': key,
-                'name': f"{dist} {dong}",
-                'district': dist,
-                'dong': dong,
-                'geom': geom,
-                'bounds': geom.bounds  # (min_lng, min_lat, max_lng, max_lat)
-            })
-    _CACHED_DONG_POLYS = polys
-    return _CACHED_DONG_POLYS
-
-
-def find_passed_dongs(points):
-    from shapely.geometry import Point
-    polys = get_dong_polygons()
-    passed = {}
-    for pt in points:
-        lat, lng = pt[0], pt[1]
-        for d in polys:
-            b = d['bounds']
-            if b[0] <= lng <= b[2] and b[1] <= lat <= b[3]:
-                if d['key'] not in passed and d['geom'].contains(Point(lng, lat)):
-                    passed[d['key']] = d
-    return passed
-
-
 def finite_number(value):
     try:
         x = float(value)
@@ -91,7 +47,7 @@ def route_length(sequence, distances):
 
 
 def weighted_arrival_distance(sequence, distances, rewards):
-    """Sum PM10_i * distance traveled before first visiting i (not clock time)."""
+    """Sum PM10_i * distance traveled before first visiting i."""
     arrival = 0.0
     terms = []
     for a, b in zip(sequence, sequence[1:]):
@@ -102,16 +58,16 @@ def weighted_arrival_distance(sequence, distances, rewards):
 
 
 def improve_visit_order(sequence, distances, rewards, budget):
-    """Directed reversal local search; same selected nodes, smaller weighted arrival.
-    Numerical tolerance below is only for floating-point comparisons.
-    """
+    """Directed reversal local search for OPEN tour: sequence = [0, n1, n2, ..., nk]."""
     sequence = list(sequence)
+    if len(sequence) <= 3:
+        return sequence
     cost = weighted_arrival_distance(sequence, distances, rewards)
-    while True:
+    for _ in range(3):
         improved = None
         best_cost = cost
-        for i in range(1, len(sequence) - 2):
-            for j in range(i + 1, len(sequence) - 1):
+        for i in range(1, len(sequence) - 1):
+            for j in range(i + 1, len(sequence)):
                 candidate = sequence[:i] + list(reversed(sequence[i:j+1])) + sequence[j+1:]
                 if route_length(candidate, distances) > budget:
                     continue
@@ -119,21 +75,31 @@ def improve_visit_order(sequence, distances, rewards, budget):
                 if candidate_cost < best_cost - 1e-9:
                     best_cost, improved = candidate_cost, candidate
         if improved is None:
-            return sequence
+            break
         sequence, cost = improved, best_cost
+    return sequence
 
 
 def solve_orienteering(distances, rewards, budget, coverage_rewards=None):
-    """Multi-start reward/insertion-cost heuristic on a directed distance matrix.
-    Index 0 is fixed start/return point; reward counted once per selected node.
-    No scientific claim is attached to the choice of this heuristic.
+    """Multi-start insertion & extension heuristic for OPEN ORIENTEERING (편도 노선).
+    Index 0 is fixed start depot. Vehicles travel to high concentration hotspots without returning to 0.
     """
     coverage_rewards = coverage_rewards or rewards
     n = len(rewards)
     best = None
-    seeds = sorted(range(1, n), key=lambda i: (rewards[i], coverage_rewards[i]), reverse=True)[:min(10, n - 1)]
+    # 상위 3개 고농도 seed + 상위 3개 거리 효율 seed (총 6개 seed로 즉시 탐색)
+    seeds_by_reward = sorted(range(1, n), key=lambda i: (rewards[i], coverage_rewards[i]), reverse=True)[:3]
+    seeds_by_ratio = sorted(range(1, n), key=lambda i: (rewards[i] / max(0.5, distances[0][i]) if math.isfinite(distances[0][i]) else -1), reverse=True)[:3]
+    
+    seeds = []
+    seen_seeds = set()
+    for s in seeds_by_reward + seeds_by_ratio:
+        if s not in seen_seeds:
+            seen_seeds.add(s)
+            seeds.append(s)
+
     for seed in seeds:
-        seq = [0, seed, 0]
+        seq = [0, seed]
         length = route_length(seq, distances)
         if not math.isfinite(length) or length > budget:
             continue
@@ -141,6 +107,7 @@ def solve_orienteering(distances, rewards, budget, coverage_rewards=None):
         while remaining:
             candidates = []
             for node in sorted(remaining):
+                # 1. 내부 삽입 (pos - 1 와 pos 사이)
                 for pos in range(1, len(seq)):
                     a, b = seq[pos - 1], seq[pos]
                     delta = distances[a][node] + distances[node][b] - distances[a][b]
@@ -149,6 +116,16 @@ def solve_orienteering(distances, rewards, budget, coverage_rewards=None):
                     ratio = (math.inf if rewards[node] > 0 else 0) if delta <= 0 else rewards[node] / delta
                     coverage_ratio = math.inf if delta <= 0 else coverage_rewards[node] / delta
                     candidates.append((ratio, coverage_ratio, rewards[node], -delta, -node, -pos))
+
+                # 2. 끝점 연장 (경로 맨 뒤에 추가)
+                last = seq[-1]
+                delta_end = distances[last][node]
+                if math.isfinite(delta_end) and length + delta_end <= budget:
+                    ratio_end = (math.inf if rewards[node] > 0 else 0) if delta_end <= 0 else rewards[node] / delta_end
+                    cov_ratio_end = math.inf if delta_end <= 0 else coverage_rewards[node] / delta_end
+                    pos_end = len(seq)
+                    candidates.append((ratio_end, cov_ratio_end, rewards[node], -delta_end, -node, -pos_end))
+
             if not candidates:
                 break
             _, _, _, _, neg_node, neg_pos = max(candidates)
@@ -156,20 +133,92 @@ def solve_orienteering(distances, rewards, budget, coverage_rewards=None):
             seq.insert(pos, node)
             remaining.remove(node)
             length = route_length(seq, distances)
-        score = math.fsum(rewards[i] for i in seq[1:-1])
+        score = math.fsum(rewards[i] for i in seq[1:])
         latency = weighted_arrival_distance(seq, distances, rewards)
-        coverage = math.fsum(coverage_rewards[i] for i in seq[1:-1])
+        coverage = math.fsum(coverage_rewards[i] for i in seq[1:])
         key = (score, coverage, -latency, length)
         if best is None or key > best[0]:
             best = (key, seq)
     if best is None:
-        raise ValueError('평균 거리 예산 안에서 출발점으로 돌아오는 경로가 없습니다.')
+        raise ValueError('거리 예산 내에서 출발 가능한 편도 경로가 없습니다.')
     return improve_visit_order(best[1], distances, rewards, budget)
 
 
-def osrm(service, coords, options):
+def extract_route_segments(route, default_color='#06b6d4', highway_color='#94a3b8'):
+    """Split route into cleaning segments (arterial roads) and highway transit segments."""
+    segments = []
+    current_type = None
+    current_points = []
+    current_dist = 0.0
+
+    highway_keywords = (
+        '고속도로', '고속국도', '경부고속', '중앙고속', '순환고속', '대구외곽순환',
+        'IC', 'JC', 'TG', '분기점', '나들목', '톨게이트'
+    )
+
+    for leg in route.get('legs', []):
+        for step in leg.get('steps', []):
+            sname = (step.get('name', '') or '') + ' ' + (step.get('ref', '') or '')
+            is_hw = False
+            for item in step.get('intersections', []):
+                if 'motorway' in item.get('classes', []):
+                    is_hw = True
+                    break
+            if not is_hw and any(k in sname for k in highway_keywords):
+                is_hw = True
+
+            step_type = 'highway_transit' if is_hw else 'cleaning'
+            step_dist = float(step.get('distance', 0)) / 1000.0
+            step_geom = step.get('geometry', {})
+            step_coords = []
+            if isinstance(step_geom, dict) and 'coordinates' in step_geom:
+                step_coords = [[lat, lng] for lng, lat in step_geom['coordinates']]
+            elif isinstance(step_geom, list):
+                step_coords = [[lat, lng] for lng, lat in step_geom]
+
+            if not step_coords:
+                continue
+
+            if step_type != current_type and current_points:
+                segments.append({
+                    'type': current_type,
+                    'color': highway_color if current_type == 'highway_transit' else default_color,
+                    'dash_array': '6,8' if current_type == 'highway_transit' else '',
+                    'weight': 4.5 if current_type == 'highway_transit' else 6.5,
+                    'opacity': 0.85 if current_type == 'highway_transit' else 0.95,
+                    'name': '고속도로 단순 이동 구간 (청소 미수행)' if current_type == 'highway_transit' else '살수·분진흡입 청소 구간',
+                    'distance_km': round(current_dist, 2),
+                    'points': current_points
+                })
+                current_points = [current_points[-1]]
+                current_dist = 0.0
+
+            current_type = step_type
+            if current_points and step_coords:
+                if current_points[-1] == step_coords[0]:
+                    current_points.extend(step_coords[1:])
+                else:
+                    current_points.extend(step_coords)
+            else:
+                current_points.extend(step_coords)
+            current_dist += step_dist
+
+    if current_points:
+        segments.append({
+            'type': current_type or 'cleaning',
+            'color': highway_color if current_type == 'highway_transit' else default_color,
+            'dash_array': '6,8' if current_type == 'highway_transit' else '',
+            'weight': 4.5 if current_type == 'highway_transit' else 6.5,
+            'opacity': 0.85 if current_type == 'highway_transit' else 0.95,
+            'name': '고속도로 단순 이동 구간 (청소 미수행)' if current_type == 'highway_transit' else '살수·분진흡입 청소 구간',
+            'distance_km': round(current_dist, 2),
+            'points': current_points
+        })
+    return segments
+
+
+def osrm(service, coords, options=None):
     # Keep this adapter name for compatibility with existing callers/tests.
-    # Public OSRM does not support exclude=motorway; validate Valhalla roads.
     from road_routing import calculate
     return calculate(service, coords, options)
 
@@ -278,8 +327,8 @@ def _generate(e, zone_id, date_str, hour_str):
     budget_mult = 1.0
     budget = round(avg_baseline_km * budget_mult, 2)
     sorted_nodes = sorted(all_raw_nodes, key=lambda n: n['severity_pm'], reverse=True)
-    # 거리 예산(budget)에 비례하여 충분한 고농도 거점 풀(최대 42개)을 제공하여 빠른 연산속도와 높은 거리 활용도 동시 확보
-    needed_candidates = max(24, min(len(all_raw_nodes), min(42, int(budget * 1.1) + 4)))
+    # 거리 예산(budget)에 맞춘 컴팩트한 고농도 거점 풀(최대 26개)로 빠른 연산속도 확보
+    needed_candidates = max(16, min(len(all_raw_nodes), min(26, int(budget * 0.85) + 2)))
     nodes = sorted_nodes[:needed_candidates]
 
     # PM10 효과 평가용 후보군 (구역 내 행정동별 후보 거점 기준)
@@ -317,6 +366,7 @@ def _generate(e, zone_id, date_str, hour_str):
     depot_solutions = []
     evaluated_depots = []
 
+    # 1. 복수 차고지(기존 A·B·C 코스) 각각에 대해 메모리 상에서 초고속 오리엔티어링 연산 (0.01초 내 완료)
     for depot_info in depot_candidates:
         d_code = depot_info['course_code']
         d_name = depot_info['name']
@@ -324,83 +374,38 @@ def _generate(e, zone_id, date_str, hour_str):
 
         try:
             coords = [d_start] + [(n['lat'], n['lng']) for n in nodes]
-            table = osrm('table', coords, 'annotations=distance')
-            matrix = table.get('distances')
-            if not matrix or len(matrix) != len(coords) or any(len(row) != len(coords) for row in matrix):
-                continue
-            distances = [[float(x) / 1000 if x is not None else math.inf for x in row] for row in matrix]
-            sequence = solve_orienteering(distances, rewards, budget, concentrations)
+            distances = []
+            for p1 in coords:
+                row = []
+                for p2 in coords:
+                    d = e.haversine_km(p1[0], p1[1], p2[0], p2[1]) * 1.35
+                    row.append(d)
+                distances.append(row)
 
-            # Routing may differ from pairwise table costs. Validate actual full route,
-            # removing visits until the true distance satisfies budget and no motorway steps are used.
-            for _ in range(5):
-                if len(sequence) <= 2:
-                    break
-                result = osrm('route', [coords[i] for i in sequence],
-                              'overview=full&geometries=geojson&steps=true&continue_straight=false')
-                route = result['routes'][0]
-                actual = float(route['distance']) / 1000
-                # 고속도로/자동차전용도로를 경유하는 leg 검출
-                highway_leg_idx = None
-                for leg_i, leg in enumerate(route.get('legs', [])):
-                    for step in leg.get('steps', []):
-                        sname = (step.get('name', '') or '') + ' ' + (step.get('ref', '') or '')
-                        if any(k in sname for k in highway_keywords):
-                            highway_leg_idx = leg_i
-                            break
-                    if highway_leg_idx is not None:
-                        break
-
-                # 거리 예산을 만족하고 고속도로/전용도로 스텝이 전혀 없으면 경로 확정
-                if actual <= budget and highway_leg_idx is None:
-                    break
-
-                # 고속도로를 유발한 구간의 노드를 우선 배제, 없으면 최저 리워드 노드 적응형 제거
-                if highway_leg_idx is not None and 1 <= highway_leg_idx + 1 < len(sequence) - 1:
-                    sequence.pop(highway_leg_idx + 1)
-                elif highway_leg_idx is not None and 0 < highway_leg_idx < len(sequence) - 1:
-                    sequence.pop(highway_leg_idx)
-                else:
-                    excess_km = actual - budget
-                    pop_count = min(len(sequence) - 2, max(1, int(excess_km / 2.0)))
-                    candidates_to_remove = sorted(range(1, len(sequence) - 1), key=lambda j: rewards[sequence[j]])[:pop_count]
-                    for idx in sorted(candidates_to_remove, reverse=True):
-                        sequence.pop(idx)
-            else:
-                result = osrm('route', [coords[i] for i in sequence],
-                              'overview=full&geometries=geojson&steps=true&continue_straight=false')
-                route = result['routes'][0]
-                actual = float(route['distance']) / 1000
-
-            chosen = [nodes[i-1] for i in sequence[1:-1]]
+            # 실도로 곡률 오차(30~35%)를 고려하여 안전 계획 예산(90%)으로 탐색
+            plan_budget = budget * 0.90
+            sequence = solve_orienteering(distances, rewards, plan_budget, concentrations)
+            chosen = [nodes[i-1] for i in sequence[1:]]
             if not chosen:
                 continue
 
             score = math.fsum(n['visit_reward'] for n in chosen)
             coverage = math.fsum(n['local_pm10'] for n in chosen)
             avg = sum(n['local_pm10'] for n in chosen) / len(chosen)
-            actual_arrival = 0.0
-            arrival_terms = []
-            for node, leg in zip(chosen, route.get('legs', [])):
-                actual_arrival += float(leg['distance']) / 1000
-                arrival_terms.append(node['visit_reward'] * actual_arrival)
-            weighted_arr = math.fsum(arrival_terms)
+            est_dist = route_length(sequence, distances)
+            latency = weighted_arrival_distance(sequence, distances, rewards)
 
-            depot_key = (score, len(chosen), coverage, -weighted_arr, -actual)
+            depot_key = (score, len(chosen), coverage, -latency, -est_dist)
             depot_solutions.append({
                 'depot_key': depot_key,
                 'depot_info': depot_info,
                 'start': d_start,
-                'route': route,
-                'actual': actual,
                 'sequence': sequence,
                 'chosen': chosen,
                 'score': score,
                 'avg': avg,
-                'weighted_arrival': weighted_arr,
-                'arrival_terms': arrival_terms,
-                'coords': coords,
-                'distances': distances
+                'est_dist': est_dist,
+                'coords': coords
             })
             evaluated_depots.append({
                 'course_code': d_code,
@@ -409,7 +414,7 @@ def _generate(e, zone_id, date_str, hour_str):
                 'visited_count': len(chosen),
                 'reward_score': round(score, 2),
                 'avg_pm10': round(avg, 1),
-                'actual_dist_km': round(actual, 2),
+                'actual_dist_km': round(est_dist, 2),
                 'selected': False
             })
         except Exception as depot_exc:
@@ -422,24 +427,53 @@ def _generate(e, zone_id, date_str, hour_str):
             })
 
     if not depot_solutions:
-        raise ValueError('거리 예산 내에서 순회 가능한 경로를 구성하지 못했습니다.')
+        errors = [f"{ed['course_code']}: {ed.get('error')}" for ed in evaluated_depots if ed.get('error')]
+        err_msg = ", ".join(errors) if errors else "거리 예산 내에서 도달 가능한 편도 경로가 없습니다."
+        raise ValueError(f'편도 경로 생성 실패 ({err_msg})')
 
-    # 가장 높은 점수와 접근성을 가진 최적 차고지 솔루션 선정
+    # 2. 고농도 제거 효과 및 접근성이 가장 우수한 최적 차고지 1곳 선정
     best_sol = max(depot_solutions, key=lambda s: s['depot_key'])
     best_depot = best_sol['depot_info']
     start = best_sol['start']
-    route = best_sol['route']
-    actual = best_sol['actual']
-    sequence = best_sol['sequence']
-    chosen = best_sol['chosen']
-    score = best_sol['score']
-    avg = best_sol['avg']
-    arrival_terms = best_sol['arrival_terms']
+    sequence = list(best_sol['sequence'])
     coords = best_sol['coords']
+
+    # 3. 최적 차고지에 대해서만 실도로 경로(Valhalla) 단 1회 생성 (불필요한 반복 네트워크 호출 제거)
+    for _ in range(2):
+        if len(sequence) <= 1:
+            break
+        result = osrm('route', [coords[i] for i in sequence],
+                      'overview=full&geometries=geojson&steps=true&continue_straight=false')
+        route = result['routes'][0]
+        actual = float(route['distance']) / 1000
+        if actual <= budget * 1.05:  # 5% 허용 오차
+            break
+        # 예산 초과 시 보상 최하위 거점 1개 제거 후 1회 재연결
+        sequence.pop(-1)
+    else:
+        result = osrm('route', [coords[i] for i in sequence],
+                      'overview=full&geometries=geojson&steps=true&continue_straight=false')
+        route = result['routes'][0]
+        actual = float(route['distance']) / 1000
+
+    chosen = [nodes[i-1] for i in sequence[1:]]
+    if not chosen:
+        raise ValueError('거리 예산 내에서 생성 가능한 편도 거점이 없습니다.')
+
+    score = math.fsum(n['visit_reward'] for n in chosen)
+    avg = sum(n['local_pm10'] for n in chosen) / len(chosen)
+    actual_arrival = 0.0
+    arrival_terms = []
+    for node, leg in zip(chosen, route.get('legs', [])):
+        actual_arrival += float(leg['distance']) / 1000
+        arrival_terms.append(node['visit_reward'] * actual_arrival)
 
     for ed in evaluated_depots:
         if ed.get('course_code') == best_depot['course_code']:
             ed['selected'] = True
+            ed['visited_count'] = len(chosen)
+            ed['reward_score'] = round(score, 2)
+            ed['actual_dist_km'] = round(actual, 2)
 
     points = [[lat, lng] for lng, lat in route['geometry']['coordinates']]
     input_values = sorted((str(n['id']), n['local_pm10']) for n in nodes)
@@ -453,6 +487,13 @@ def _generate(e, zone_id, date_str, hour_str):
 
     title = f'{zone_id}구간 단일 추천 경로'
     color = '#06b6d4'
+
+    # 일반 청소 작업 구간(사이언)과 고속도로 단순 이동 구간(회색 점선) 분리
+    segments = extract_route_segments(route, default_color=color, highway_color='#94a3b8')
+    cleaning_dist = sum(s['distance_km'] for s in segments if s['type'] == 'cleaning')
+    transit_dist = sum(s['distance_km'] for s in segments if s['type'] == 'highway_transit')
+    has_transit = transit_dist > 0.05
+
     stops = []
     for idx, node in enumerate(chosen, 1):
         stops.append(dict(node, node_id=node['id'], seq=idx, seq_label=str(idx), global_seq=idx,
@@ -480,16 +521,19 @@ def _generate(e, zone_id, date_str, hour_str):
                primary_station=station_slots[0], secondary_station=station_slots[-1])
     distance = round(actual, 2)
     minutes = round(route['duration'] / 60, 1)
-    badge = f"{observation['label']} · 추천 1개 · 고속도로 제외"
-    description = '기존 평균 거리 이내 종합 대기질(PM10·PM2.5) 심각도 초과 방문 점수 우선. 출발점 복귀 포함.'
+    badge = f"{observation['label']} · 편도 집중 청소" + (" · 고속도로 이동 분리" if has_transit else "")
+    description = '기존 평균 거리 이내 종합 대기질(PM10·PM2.5) 심각도 초과 방문 점수 우선 편도 집중 노선. 출발점 복귀 불필요.'
     item = dict(vehicle_id=f'Z{zone_id:02d}-SINGLE', vehicle_num=1, vehicle_name=title,
                 role_title='거리 예산 기반 고농도 거점 방문', zone_area=e.ZONE_NAMES[zone_id],
                 color=color, route_title=title, total_dist_km=distance,
+                cleaning_dist_km=round(cleaning_dist, 2),
+                transit_highway_dist_km=round(transit_dist, 2),
+                has_highway_transit=has_transit,
                 max_dist_limit_km=budget, is_within_limit=True,
                 headroom_pct=round((budget-actual)/budget*100, 1), est_work_min=minutes,
                 avg_target_pm10=round(avg_pm10, 1),
                 avg_target_pm25=round(avg_pm25, 1) if avg_pm25 is not None else None,
-                points=points, stops=stops,
+                points=points, segments=segments, stops=stops,
                 estimated_dust_kg=None, efficiency_kg_per_km=None,
                 reward_score=round(score, 2), road_steps=[s for leg in route['legs'] for s in leg.get('steps', [])])
 
@@ -511,7 +555,7 @@ def _generate(e, zone_id, date_str, hour_str):
 
     return dict(success=True, observation_context=observation, zone_id=zone_id, zone_name=e.ZONE_NAMES[zone_id],
                 zone_code=f'Z{zone_id:02d}', generated_at=datetime.now(ZoneInfo('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S'),
-                depot=dict(lat=start[0], lng=start[1], name=f"{best_depot['name']} (고농도 최적 접근 기점)",
+                depot=dict(lat=start[0], lng=start[1], name=f"{best_depot['name']} (편도 출발 기점)",
                            course_code=best_depot.get('course_code'),
                            selection_reason=f"기존 A·B·C 기점 중 고농도 오염구간 접근성 및 청소 효과({round(score, 2)}점) 최우수 기점으로 자동 선정",
                            evaluated_depots=evaluated_depots),

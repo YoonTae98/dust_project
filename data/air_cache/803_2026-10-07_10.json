@@ -1,0 +1,838 @@
+{
+  "sttn_cd": "803",
+  "station_name": "이곡동(달서구)",
+  "date": "2026-10-07",
+  "stations": {
+    "701": "수창동(중구)",
+    "702": "지산동(수성구)",
+    "703": "서호동(동구)",
+    "704": "이현동(서구)",
+    "705": "대명동(남구)",
+    "707": "신암동(동구)",
+    "708": "태전동(북구)",
+    "709": "만촌동(수성구)",
+    "710": "호림동(달서구)",
+    "711": "유가읍(달성군)",
+    "712": "시지동(수성구)",
+    "713": "진천동(달서구)",
+    "714": "다사읍(달성군)",
+    "715": "본동(달서구)",
+    "716": "산격동(북구)",
+    "717": "화원읍(달성군)",
+    "718": "내당동(서구)",
+    "719": "침산동(북구)",
+    "720": "남산1동(중구)",
+    "802": "평리동(서구)",
+    "803": "이곡동(달서구)",
+    "804": "충혼탑(남구)",
+    "805": "서변동(북구)",
+    "806": "연호동(수성구)",
+    "807": "용계동(동구)"
+  },
+  "district_map": {
+    "중구": {
+      "sttn_cd": "701",
+      "name": "수창동",
+      "fallbacks": [
+        "720"
+      ]
+    },
+    "남구": {
+      "sttn_cd": "705",
+      "name": "대명동",
+      "fallbacks": [
+        "804"
+      ]
+    },
+    "동구": {
+      "sttn_cd": "707",
+      "name": "신암동",
+      "fallbacks": [
+        "703",
+        "807"
+      ]
+    },
+    "서구": {
+      "sttn_cd": "704",
+      "name": "이현동",
+      "fallbacks": [
+        "718",
+        "802"
+      ]
+    },
+    "북구": {
+      "sttn_cd": "708",
+      "name": "태전동",
+      "fallbacks": [
+        "716",
+        "719",
+        "805"
+      ]
+    },
+    "수성구": {
+      "sttn_cd": "709",
+      "name": "만촌동",
+      "fallbacks": [
+        "702",
+        "712",
+        "806"
+      ]
+    },
+    "달서구": {
+      "sttn_cd": "803",
+      "name": "이곡동",
+      "fallbacks": [
+        "710",
+        "713",
+        "715"
+      ]
+    },
+    "달성군": {
+      "sttn_cd": "714",
+      "name": "다사읍",
+      "fallbacks": [
+        "711",
+        "717"
+      ]
+    }
+  },
+  "records": [
+    {
+      "time": "2026-10-07 01:00",
+      "cai": {
+        "substance": "PM2.5",
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "54"
+      },
+      "pm25": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "54"
+      },
+      "pm10": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "38"
+      },
+      "o3": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "52"
+      },
+      "co": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "10"
+      },
+      "so2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "6"
+      },
+      "no2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "38"
+      }
+    },
+    {
+      "time": "2026-10-07 02:00",
+      "cai": {
+        "substance": "PM2.5",
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "82"
+      },
+      "pm25": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "82"
+      },
+      "pm10": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "45"
+      },
+      "o3": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "49"
+      },
+      "co": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "10"
+      },
+      "so2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "6"
+      },
+      "no2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "35"
+      }
+    },
+    {
+      "time": "2026-10-07 03:00",
+      "cai": {
+        "substance": "PM2.5",
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "56"
+      },
+      "pm25": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "56"
+      },
+      "pm10": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "43"
+      },
+      "o3": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "52"
+      },
+      "co": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "9"
+      },
+      "so2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "6"
+      },
+      "no2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "26"
+      }
+    },
+    {
+      "time": "2026-10-07 04:00",
+      "cai": {
+        "substance": "PM2.5",
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "61"
+      },
+      "pm25": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "61"
+      },
+      "pm10": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "43"
+      },
+      "o3": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "51"
+      },
+      "co": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "9"
+      },
+      "so2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "6"
+      },
+      "no2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "25"
+      }
+    },
+    {
+      "time": "2026-10-07 05:00",
+      "cai": {
+        "substance": "PM2.5",
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "59"
+      },
+      "pm25": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "59"
+      },
+      "pm10": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "45"
+      },
+      "o3": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "39"
+      },
+      "co": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "9"
+      },
+      "so2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "5"
+      },
+      "no2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "31"
+      }
+    },
+    {
+      "time": "2026-10-07 06:00",
+      "cai": {
+        "substance": "PM2.5",
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "66"
+      },
+      "pm25": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "66"
+      },
+      "pm10": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "47"
+      },
+      "o3": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "24"
+      },
+      "co": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "10"
+      },
+      "so2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "6"
+      },
+      "no2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "45"
+      }
+    },
+    {
+      "time": "2026-10-07 07:00",
+      "cai": {
+        "substance": "PM2.5",
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "59"
+      },
+      "pm25": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "59"
+      },
+      "pm10": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "48"
+      },
+      "o3": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "20"
+      },
+      "co": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "10"
+      },
+      "so2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "5"
+      },
+      "no2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "46"
+      }
+    },
+    {
+      "time": "2026-10-07 08:00",
+      "cai": {
+        "substance": "PM2.5",
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "66"
+      },
+      "pm25": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "66"
+      },
+      "pm10": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "51"
+      },
+      "o3": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "17"
+      },
+      "co": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "11"
+      },
+      "so2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "6"
+      },
+      "no2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "49"
+      }
+    },
+    {
+      "time": "2026-10-07 09:00",
+      "cai": {
+        "substance": "PM2.5",
+        "grade": {
+          "level": 3,
+          "text": "나쁨",
+          "class": "grade-bad",
+          "icon": "frown"
+        },
+        "value": "151"
+      },
+      "pm25": {
+        "grade": {
+          "level": 3,
+          "text": "나쁨",
+          "class": "grade-bad",
+          "icon": "frown"
+        },
+        "value": "151"
+      },
+      "pm10": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "57"
+      },
+      "o3": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "32"
+      },
+      "co": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "12"
+      },
+      "so2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "9"
+      },
+      "no2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "48"
+      }
+    },
+    {
+      "time": "2026-10-07 10:00",
+      "cai": {
+        "substance": "PM2.5",
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "72"
+      },
+      "pm25": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "color": "#10b981",
+          "icon": "smile"
+        },
+        "value": "24"
+      },
+      "pm10": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "color": "#10b981",
+          "icon": "smile"
+        },
+        "value": "50"
+      },
+      "o3": {
+        "grade": {
+          "level": 2,
+          "text": "보통",
+          "class": "grade-moderate",
+          "icon": "smile"
+        },
+        "value": "57"
+      },
+      "co": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "10"
+      },
+      "so2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "10"
+      },
+      "no2": {
+        "grade": {
+          "level": 1,
+          "text": "좋음",
+          "class": "grade-good",
+          "icon": "smile"
+        },
+        "value": "47"
+      }
+    }
+  ],
+  "latest": {
+    "time": "2026-10-07 10:00",
+    "cai": {
+      "substance": "PM2.5",
+      "grade": {
+        "level": 2,
+        "text": "보통",
+        "class": "grade-moderate",
+        "icon": "smile"
+      },
+      "value": "72"
+    },
+    "pm25": {
+      "grade": {
+        "level": 2,
+        "text": "보통",
+        "color": "#10b981",
+        "icon": "smile"
+      },
+      "value": "24"
+    },
+    "pm10": {
+      "grade": {
+        "level": 2,
+        "text": "보통",
+        "color": "#10b981",
+        "icon": "smile"
+      },
+      "value": "50"
+    },
+    "o3": {
+      "grade": {
+        "level": 2,
+        "text": "보통",
+        "class": "grade-moderate",
+        "icon": "smile"
+      },
+      "value": "57"
+    },
+    "co": {
+      "grade": {
+        "level": 1,
+        "text": "좋음",
+        "class": "grade-good",
+        "icon": "smile"
+      },
+      "value": "10"
+    },
+    "so2": {
+      "grade": {
+        "level": 1,
+        "text": "좋음",
+        "class": "grade-good",
+        "icon": "smile"
+      },
+      "value": "10"
+    },
+    "no2": {
+      "grade": {
+        "level": 1,
+        "text": "좋음",
+        "class": "grade-good",
+        "icon": "smile"
+      },
+      "value": "47"
+    }
+  }
+}

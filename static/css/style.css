@@ -3373,6 +3373,27 @@ path.dynamic-route-neon {
   will-change: auto;
 }
 
+/* 고속도로 단순 이동 전용 점선 스타일 */
+path.dynamic-route-highway-transit {
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 6, 8;
+  filter: drop-shadow(0 0 3px rgba(148, 163, 184, 0.4));
+  will-change: auto;
+}
+
+/* 도로 세그먼트 툴팁 스타일 */
+.route-segment-tooltip {
+  background: rgba(15, 23, 42, 0.94) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(148, 163, 184, 0.4) !important;
+  border-radius: 6px !important;
+  font-size: 0.8rem !important;
+  font-weight: 700 !important;
+  padding: 4px 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45) !important;
+}
+
 /* ========================================================================== */
 /* 실시간 분진순찰 전담 내비게이션 HUD & 런처 스타일                           */
 /* ========================================================================== */

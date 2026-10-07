@@ -2462,22 +2462,15 @@ function renderDynamicRouteOnMap(data, shouldZoom = false) {
   dynamicRouteMarkersGroup = L.featureGroup();
   dynamicFleetPolylines = [];
 
-  // 1. 차량별 동적 도로망 네온 Polyline 생성 (다중 노선)
+  // 1. 차량별 동적 도로망 네온 Polyline 생성 (다중 노선 및 세그먼트 지원)
   fleetRoutes.forEach((route, vIdx) => {
     if (!route.points || route.points.length === 0) return;
 
     const routeColor = route.color || (vIdx === 0 ? '#ef4444' : (vIdx === 1 ? '#f97316' : '#a855f7'));
-    const poly = L.polyline(route.points, {
-      color: routeColor,
-      weight: 6.5,
-      opacity: 0.95,
-      lineJoin: 'round',
-      lineCap: 'round',
-      className: 'dynamic-route-neon'
-    });
+    let mainPolyForPopup = null;
 
     const routePopupHtml = `
-      <div style="min-width: 260px; font-family: inherit;">
+      <div style="min-width: 270px; font-family: inherit;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
           <span style="background: ${route.accent_bg || 'rgba(6, 182, 212, 0.2)'}; color: ${routeColor}; border: 1px solid ${routeColor}; font-size: 0.78rem; font-weight: 800; padding: 2px 7px; border-radius: 4px;">
             ${route.vehicle_name || `${vIdx + 1}호차`}
@@ -2490,8 +2483,17 @@ function renderDynamicRouteOnMap(data, shouldZoom = false) {
           ${route.route_title || route.name}
         </div>
         <div style="font-size: 0.84rem; color: #94a3b8; margin-bottom: 8px;">
-          운행 거리 <strong>${route.total_dist_km}km</strong> / 목표 ${Number(route.max_dist_limit_km).toFixed(2)}km · 일반 주행 <strong>${route.est_work_min}분</strong>
+          총 운행 <strong>${route.total_dist_km}km</strong> / 목표 ${Number(route.max_dist_limit_km).toFixed(2)}km · 소요 <strong>${route.est_work_min}분</strong>
         </div>
+        ${route.has_highway_transit ? `
+        <div style="display: flex; gap: 6px; margin-bottom: 8px; font-size: 0.76rem;">
+          <span style="flex: 1; background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.4); color: #38bdf8; padding: 4px 6px; border-radius: 4px; text-align: center;">
+            🧹 청소 ${route.cleaning_dist_km || route.total_dist_km}km
+          </span>
+          <span style="flex: 1; background: rgba(148, 163, 184, 0.15); border: 1px solid rgba(148, 163, 184, 0.4); color: #94a3b8; padding: 4px 6px; border-radius: 4px; text-align: center;">
+            🚗 고속이동 ${route.transit_highway_dist_km || 0}km
+          </span>
+        </div>` : ''}
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: rgba(255,255,255,0.06); padding: 8px; border-radius: 6px; margin-bottom: 8px;">
           <div>
             <div style="font-size: 0.72rem; color: #94a3b8;">방문 거점 평균 PM10</div>
@@ -2510,13 +2512,57 @@ function renderDynamicRouteOnMap(data, shouldZoom = false) {
       </div>
     `;
 
-    poly.bindPopup(routePopupHtml);
-    dynamicFleetPolylines.push({
-      vehicleId: route.vehicle_id,
-      polyline: poly,
-      routeData: route
-    });
-    dynamicRouteMarkersGroup.addLayer(poly);
+    // 1-1. 세그먼트(일반 청소 도로 vs 고속도로 단순 이동) 지원
+    if (route.segments && route.segments.length > 0) {
+      route.segments.forEach((seg, sIdx) => {
+        if (!seg.points || seg.points.length < 2) return;
+        const isHighway = seg.type === 'highway_transit';
+        const segColor = isHighway ? '#94a3b8' : (seg.color || routeColor);
+        const segPoly = L.polyline(seg.points, {
+          color: segColor,
+          weight: isHighway ? 4.5 : 6.5,
+          opacity: isHighway ? 0.85 : 0.95,
+          dashArray: isHighway ? '6,8' : '',
+          lineJoin: 'round',
+          lineCap: 'round',
+          className: isHighway ? 'dynamic-route-highway-transit' : 'dynamic-route-neon'
+        });
+
+        const segTooltip = isHighway 
+          ? `🚗 고속도로 단순 이동 (청소 미수행): ${seg.distance_km}km`
+          : `🧹 살수·흡입 청소 작업 구간: ${seg.distance_km}km`;
+        segPoly.bindTooltip(segTooltip, { sticky: true, className: 'route-segment-tooltip' });
+        segPoly.bindPopup(routePopupHtml);
+
+        if (!mainPolyForPopup || !isHighway) {
+          mainPolyForPopup = segPoly;
+        }
+
+        dynamicRouteMarkersGroup.addLayer(segPoly);
+        dynamicFleetPolylines.push({
+          vehicleId: route.vehicle_id,
+          polyline: segPoly,
+          routeData: route
+        });
+      });
+    } else {
+      const poly = L.polyline(route.points, {
+        color: routeColor,
+        weight: 6.5,
+        opacity: 0.95,
+        lineJoin: 'round',
+        lineCap: 'round',
+        className: 'dynamic-route-neon'
+      });
+      poly.bindPopup(routePopupHtml);
+      mainPolyForPopup = poly;
+      dynamicFleetPolylines.push({
+        vehicleId: route.vehicle_id,
+        polyline: poly,
+        routeData: route
+      });
+      dynamicRouteMarkersGroup.addLayer(poly);
+    }
 
     // 1-1. 각 차량 운행 노선 경로 위에 '차량 운행 거리' 네온 플로팅 배지 마커 생성
     if (route.points && route.points.length > 0) {
