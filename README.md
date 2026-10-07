@@ -9,7 +9,7 @@
 1. **실시간 대기질 수집 및 읍면동 단위 IDW 공간 보간**
    - **대구광역시 실시간 대기정보(air.daegu.go.kr) 크롤링 연동**: 대구시 보건환경연구원 공식 사이트로부터 대구 25개 대기 측정소의 실시간 PM10, PM2.5, NO2, O3 데이터를 실시간 크롤링 및 로컬 캐싱.
    - **IDW(Inverse Distance Weighting, 역거리 가중법)**: 25개 측정소 실측치를 기반으로 대구시 140여 개 전체 행정동 중심점의 대기질을 실시간 보간 연산.
-   - **카카오맵 히트맵/단계구분도(Choropleth)**: 행정동별 대기질 수준(좋음/보통/나쁨/매우나쁨)에 맞추어 지도에 동별 색상 레이어 표출.
+   - **Leaflet.js 히트맵/단계구분도(Choropleth)**: 행정동별 대기질 수준(좋음/보통/나쁨/매우나쁨)에 맞추어 지도에 동별 색상 레이어 표출.
 
 2. **AI 기반 다중 차고지 & 다중 차량 최적 경로 생성**
    - **다중 차고지(Multi-Depot) 출발/복귀 지원**: 각 권역별 지정 차고지(북구청, 달서구청, 환경자원사업소 등)에서 출발하여 청소 후 안전하게 복귀하는 순환 경로 생성.
@@ -30,13 +30,39 @@
 
 ---
 
+## 🛠️ 기술 스택 & 사용 라이브러리
+
+| 분류 | 기술 / 라이브러리 | 용도 및 설명 |
+| :--- | :--- | :--- |
+| **Backend** | `Python 3.10+` | 백엔드 핵심 런타임 환경 |
+| | `Flask (>=3.1.0)` | 경량 WSGI 웹 애플리케이션 프레임워크 & RESTful API 서버 |
+| | `Gunicorn (>=21.2.0)` | 프로덕션 배포용 고성능 Python WSGI HTTP 서버 |
+| | `BeautifulSoup4 (>=4.12.0)` | 대구시 보건환경연구원 실시간 대기정보 HTML 웹 크롤링 및 파싱 |
+| | `urllib` / `requests (>=2.31.0)` | 외부 HTTP 요청 및 SSL 통신 제어 |
+| | `SQLite3` (내장) | 대기 크롤링 실시간 응답 2단계 영속 캐시 DB (`air_cache.db`) |
+| | `pandas` / `numpy` | 대기질 데이터 전처리, 통계 산출 및 수치 행렬 연산 |
+| **Frontend** | `HTML5` / `CSS3` (Vanilla) | 반응형 다크 테마 대시보드 UI 및 Glassmorphism 디자인 시스템 |
+| | `JavaScript (ES6+)` | 비동기 Fetch API 통신 및 UI 동적 인터랙션 |
+| **Web GIS** | `Leaflet.js (v1.9.4)` | 오픈소스 인터랙티브 웹 지도 렌더링 엔진 (API 키/비용 무료) |
+| | `CartoDB Dark Matter` | 다크 테마 일반 도로망 베이스 타일맵 |
+| | `Esri World Imagery` | 고해상도 항공 위성사진 베이스 타일맵 |
+| | `GeoJSON` | 대구 13개 권역 및 140개 행정동 정밀 경계 지리 벡터 데이터 |
+| **Algorithms** | `IDW (Inverse Distance Weighting)` | 25개 측정소 기반 140개 행정동 대기질 공간 보간 알고리즘 |
+| | `TSP (2-opt Heuristic)` | 미세먼지 오염도 가중 외판원 문제(TSP) 도로망 순회 최적화 |
+| | `PM10 Proxy Effect Model` | 환경부 공인 43.3% 기준 행정동 커버리지 실효 저감률 산출 모델 |
+| | `Vector Turn-Guidance` | 주행 각도 벡터 기반 턴바이턴(좌/우회전) 음성·텍스트 안내 생성 |
+| **UI & Assets** | `Lucide Icons` | 직관적인 경량 SVG UI 벡터 아이콘 CDN |
+| | `Google Fonts` | `Pretendard`, `Outfit` 모던 웹 폰트 |
+
+---
+
 ## 🏛️ 시스템 아키텍처 & 데이터 흐름
 
 ```mermaid
 flowchart TD
     subgraph Client ["🖥️ 프론트엔드 (웹 브라우저)"]
         HTML["templates/index.html\n(SPA 대시보드)"]
-        MapJS["static/js/map.js\n(카카오맵 제어 / UI 인터랙션)"]
+        MapJS["static/js/map.js\n(Leaflet 지도 제어 / UI 인터랙션)"]
         GeoJSON["static/data/*.geojson\n(권역 및 행정동 폴리곤)"]
         HTML --> MapJS
         MapJS --> GeoJSON
@@ -95,13 +121,13 @@ dust/
 │
 ├── 📁 static/                         # [웹 프론트엔드 정적 에셋]
 │   ├── css/
-│   │   └── style.css                 # 다크 테마 대시보드 및 카카오맵 UI 스타일
+│   │   └── style.css                 # 다크 테마 대시보드 및 Leaflet 지도 UI 스타일
 │   ├── data/
 │   │   ├── daegu_15_urban_zones.geojson # 13개 청소 관리 권역 경계 폴리곤
 │   │   └── daegu_dong.geojson        # 대구시 전체 140여 개 행정동 정밀 경계 폴리곤
 │   └── js/
 │       ├── zones.js                  # 13개 권역 기본 정보(중심점, 줌, 소속 동, 차고지)
-│       └── map.js                    # 카카오맵 렌더링, API 비동기 통신, 주행 시뮬레이터
+│       └── map.js                    # Leaflet 렌더링, API 비동기 통신, 주행 시뮬레이터
 │
 ├── 📁 templates/                      # [HTML 템플릿]
 │   └── index.html                    # 단일 페이지(SPA) 메인 대시보드 뷰
