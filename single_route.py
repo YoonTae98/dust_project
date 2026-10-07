@@ -496,7 +496,7 @@ def _generate(e, zone_id, date_str, hour_str):
     has_pm25 = any(n.get('local_pm25') is not None for n in chosen)
     avg_pm25 = (sum(n['local_pm25'] for n in chosen if n.get('local_pm25') is not None) / len([n for n in chosen if n.get('local_pm25') is not None])) if has_pm25 else None
 
-    title = f'{zone_id}구간 단일 추천 경로'
+    title = f'{zone_id}구간 AI 추천 경로'
     color = '#06b6d4'
 
     stops = []
@@ -609,6 +609,6 @@ def _generate(e, zone_id, date_str, hour_str):
                     idw=dict(power=1.5, k=20, network='도시대기', status='기존 설정 유지 · 검증 필요'),
                     effect_model=dict(beta=0.433,
                         source='환경부·한국환경공단 2023-04-26 분진흡입 청소차 평균 43.3%',
-                        status='도시대기 IDW를 사용한 대리지표 시뮬레이션 · 실제 대기농도 예측 아님'),
+                        status='도시대기 IDW를 사용한 대리지표 시뮬레이션'),
                     reference='https://doi.org/10.1016/j.ejor.2010.03.045',
                     note='대기 PM10 기반 방문 점수이며 제거량이 아님. 효과 비교는 경로가 영향을 준 행정동의 후보 청소거점 커버리지에 43.3%를 비례 적용한 조건부 대리지표 시뮬레이션. 전역 최적 보장 없음.'))

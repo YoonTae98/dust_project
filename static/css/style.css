@@ -2261,13 +2261,20 @@ path.selected-zone-neon-path {
 .zone-area-label-icon {
   background: transparent !important;
   border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .zone-area-label {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0 4px;
   background: rgba(15, 23, 42, 0.88);
   border: 1.5px solid var(--zone-color, #38bdf8);
   border-radius: 9999px;
@@ -2279,43 +2286,39 @@ path.selected-zone-neon-path {
 }
 
 .zal-num {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 11px;
   font-weight: 800;
   color: var(--zone-color, #38bdf8);
-}
-
-.zal-km {
-  font-family: 'Outfit', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  color: #f1f5f9;
+  line-height: 1;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .zone-area-label:hover,
 .zone-area-label.hovered {
-  transform: scale(1.18);
+  transform: scale(1.15);
   background: var(--zone-color, #38bdf8);
   border-color: #ffffff;
   box-shadow: 0 0 16px var(--zone-color, rgba(56, 189, 248, 0.9)), 0 4px 10px rgba(0, 0, 0, 0.5);
 }
 
 .zone-area-label:hover .zal-num,
-.zone-area-label.hovered .zal-num,
-.zone-area-label:hover .zal-km,
-.zone-area-label.hovered .zal-km {
+.zone-area-label.hovered .zal-num {
   color: #ffffff !important;
 }
 
 .zone-area-label.active {
-  transform: scale(1.25);
+  transform: scale(1.2);
   background: var(--zone-color, #38bdf8);
   border-color: #ffffff;
   box-shadow: 0 0 22px var(--zone-color, rgba(56, 189, 248, 1)), 0 0 0 3px rgba(255, 255, 255, 0.4);
 }
 
-.zone-area-label.active .zal-num,
-.zone-area-label.active .zal-km {
+.zone-area-label.active .zal-num {
   color: #ffffff !important;
 }
 
@@ -3324,6 +3327,7 @@ path.selected-zone-neon-path {
   margin-top: 6px;
   padding-top: 6px;
   border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  line-height: 1.45;
 }
 
 /* 3. 지도 뷰 모드 스위처 & 시뮬레이션 컨트롤 */

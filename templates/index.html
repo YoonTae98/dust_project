@@ -75,7 +75,7 @@
   </script>
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20261007_standalone_widget_v1" onerror="this.onerror=null; this.href='../static/css/style.css?v=20261007_standalone_widget_v1';">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20261007_font_restored_v1" onerror="this.onerror=null; this.href='../static/css/style.css?v=20261007_font_restored_v1';">
 </head>
 <body>
 
@@ -89,7 +89,6 @@
         </div>
         <div class="brand-text">
           <h1 class="brand-title">대구 분진흡입차량 & 대기정보 관제</h1>
-          <span class="brand-subtitle">Daegu Dust Suction & Real-time Air Quality</span>
         </div>
         <div class="header-badge" id="header-realtime-badge">
           <span class="pulse-dot"></span>
@@ -145,7 +144,7 @@
           <div class="cac-grade-box">
             <span class="cac-grade-text" id="cac-grade-text">보통</span>
             <div class="cac-icon-circle" id="cac-icon-circle">
-              <i data-lucide="smile" id="cac-icon"></i>
+              <i data-lucide="meh" id="cac-icon"></i>
             </div>
           </div>
         </div>
@@ -383,22 +382,18 @@
       <!-- 2. 오버레이 레이어 토글: [행정구역] [운행구간(13)] [구간 노선망(13)] [측정소] -->
       <div class="nft-layer-wrap">
         <button class="nft-layer-item active" id="nft-layer-dist" onclick="toggleNaverOverlay('district')" title="대구 자치구 & 142개 읍·면·동 행정구역 경계 표시 (On/Off)">
-          <span class="nft-dot"></span>
           <i data-lucide="shapes" class="nft-layer-icon"></i>
           <span>행정구역</span>
         </button>
         <button class="nft-layer-item" id="nft-layer-zone" onclick="toggleNaverOverlay('zones')" title="대구 분진흡입 운행구간 & 번호 배지 표시 (On/Off)">
-          <span class="nft-dot"></span>
           <i data-lucide="layers" class="nft-layer-icon"></i>
           <span>운행구간</span>
         </button>
         <button class="nft-layer-item active" id="nft-layer-route" onclick="toggleNaverOverlay('routes')" title="대구 운행구간별 전담 도로망 노선 표시 (On/Off)">
-          <span class="nft-dot"></span>
           <i data-lucide="truck" class="nft-layer-icon"></i>
           <span>구간 노선망</span>
         </button>
         <button class="nft-layer-item active" id="nft-layer-station" onclick="toggleNaverOverlay('stations')" title="대구 25개 실시간 대기 측정소 핀 위치 표시 (On/Off)">
-          <span class="nft-dot"></span>
           <i data-lucide="map-pin" class="nft-layer-icon"></i>
           <span>측정소</span>
         </button>
@@ -530,7 +525,7 @@
             <div>
               <div class="drm-title">
                 <span>실시간 최적 정화 노선</span>
-                <span class="zdc-tag" style="background: rgba(6, 182, 212, 0.2); color: #38bdf8; border-color: rgba(6, 182, 212, 0.4); font-size: 12px; padding: 2px 8px;">
+                <span class="zdc-tag" style="background: rgba(6, 182, 212, 0.2); color: #38bdf8; border-color: rgba(6, 182, 212, 0.4); font-size: 16px; padding: 2px 8px;">
                   추천 경로 1개
                 </span>
               </div>
@@ -648,7 +643,7 @@
 
         <!-- 푸터 -->
         <div class="drm-footer">
-          <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+          <div style="font-size: 16px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
             <i data-lucide="check-circle" style="color: #10b981; width: 15px; height: 15px;"></i>
             <span>대구광역시 보건환경연구원 25개 대기측정망 및 OpenStreetMap 도로 경로 · 고속도로 도로등급 검사</span>
           </div>
@@ -659,8 +654,8 @@
   </div>
 
   <!-- 지도 및 13개 최적 균형 운행구간 & 실시간 대기 스크립트 -->
-  <script src="{{ url_for('static', filename='js/zones.js') }}?v=20261007_v1" onerror="this.onerror=null; this.src='../static/js/zones.js?v=20261007_v1';"></script>
-  <script src="{{ url_for('static', filename='js/map.js') }}?v=20261007_city_avg_v1" onerror="this.onerror=null; this.src='../static/js/map.js?v=20261007_city_avg_v1';"></script>
+  <script src="{{ url_for('static', filename='js/zones.js') }}?v=20261007_center_badge_v1" onerror="this.onerror=null; this.src='../static/js/zones.js?v=20261007_center_badge_v1';"></script>
+  <script src="{{ url_for('static', filename='js/map.js') }}?v=20261007_ai_route_title_v5" onerror="this.onerror=null; this.src='../static/js/map.js?v=20261007_ai_route_title_v5';"></script>
   <script>
     if (window.lucide) {
       lucide.createIcons();

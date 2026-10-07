@@ -413,8 +413,8 @@ async function init15ZoneVisualization() {
     const labelIcon = L.divIcon({
       html: labelHtml,
       className: 'zone-area-label-icon',
-      iconSize: [68, 28],
-      iconAnchor: [34, 14]
+      iconSize: [84, 34],
+      iconAnchor: [42, 17]
     });
 
     const labelMarker = L.marker(zone.centroid, { icon: labelIcon, zIndexOffset: 850 });
@@ -458,8 +458,8 @@ async function init15ZoneVisualization() {
       const intensiveIcon = L.divIcon({
         html: intensiveHtml,
         className: 'intensive-custom-icon',
-        iconSize: [130, 32],
-        iconAnchor: [65, 36]
+        iconSize: [170, 38],
+        iconAnchor: [85, 42]
       });
       const intensiveMarker = L.marker(zone.intensiveCoords, { icon: intensiveIcon, zIndexOffset: 950 });
       intensiveMarker.on('click', (e) => {
@@ -692,7 +692,7 @@ function renderZoneDashboardCard(selectedZone = null) {
         <div class="zdc-dynamic-btn-row">
           <button class="btn-generate-dynamic-route" id="btn-gen-dynamic-z1" onclick="generateAndDisplayDynamicRoute(${selectedZone.id})" title="${selectedZone.id}구간 선택한 날짜의 대기현황 기반 노선 다시 생성">
             <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
-            <span>⚡ ${selectedZone.id}구간 노선 재생성</span>
+            <span>${selectedZone.id}구간 노선 재생성</span>
           </button>
           <button class="zdc-btn-detail" onclick="openDynamicRoutePanel()" title="상세 작업지시서 및 함대 관제 모달 열기">
             <i data-lucide="clipboard-list" style="width: 14px; height: 14px;"></i>
@@ -706,7 +706,7 @@ function renderZoneDashboardCard(selectedZone = null) {
       <div class="zdc-dynamic-action-row">
         <button class="btn-generate-dynamic-route" id="btn-gen-dynamic-z1" onclick="generateAndDisplayDynamicRoute(${selectedZone.id})" title="${selectedZone.id}구간(${selectedZone.district}) 선택한 날짜의 대기현황 기반 추천경로 생성">
           <i data-lucide="zap" style="width: 15px; height: 15px;"></i>
-          <span>⚡ ${selectedZone.id}구간 추천 경로 생성</span>
+          <span>${selectedZone.id}구간 추천 경로 생성</span>
         </button>
       </div>
     `;

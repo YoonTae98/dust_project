@@ -284,12 +284,12 @@ def crawl_daegu_realtime_air(sttn_cd='701', date_str=None):
         if 'lv1' in src:
             return {'level': 1, 'text': '좋음', 'class': 'grade-good', 'icon': 'smile'}
         elif 'lv2' in src:
-            return {'level': 2, 'text': '보통', 'class': 'grade-moderate', 'icon': 'smile'}
+            return {'level': 2, 'text': '보통', 'class': 'grade-moderate', 'icon': 'meh'}
         elif 'lv3' in src:
             return {'level': 3, 'text': '나쁨', 'class': 'grade-bad', 'icon': 'frown'}
         elif 'lv4' in src:
             return {'level': 4, 'text': '매우나쁨', 'class': 'grade-very-bad', 'icon': 'alert-circle'}
-        return {'level': 2, 'text': '보통', 'class': 'grade-moderate', 'icon': 'smile'}
+        return {'level': 2, 'text': '보통', 'class': 'grade-moderate', 'icon': 'meh'}
 
     def get_clean_text(td):
         return td.text.strip().replace('\xa0', '').replace('\n', '')
@@ -359,14 +359,14 @@ def crawl_daegu_realtime_air(sttn_cd='701', date_str=None):
                     'level': st_info['pm10_level'],
                     'text': st_info['pm10_text'],
                     'color': st_info['pm10_color'],
-                    'icon': 'smile' if st_info['pm10_level'] <= 2 else 'frown'
+                    'icon': 'smile' if st_info['pm10_level'] == 1 else ('meh' if st_info['pm10_level'] == 2 else 'frown')
                 }
                 latest_rec['pm25']['value'] = str(st_info['pm25'])
                 latest_rec['pm25']['grade'] = {
                     'level': st_info['pm25_level'],
                     'text': st_info['pm25_text'],
                     'color': st_info['pm25_color'],
-                    'icon': 'smile' if st_info['pm25_level'] <= 2 else 'frown'
+                    'icon': 'smile' if st_info['pm25_level'] == 1 else ('meh' if st_info['pm25_level'] == 2 else 'frown')
                 }
         except Exception as e:
             print(f"[AirCrawler] 실시간 농도 동기화 예외: {e}")

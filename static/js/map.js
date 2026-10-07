@@ -1716,8 +1716,8 @@ function initRoadLeafletMap() {
               <span class="frd-km">${route.length_km}km</span>
             </div>`,
             className: 'fleet-route-badge-container',
-            iconSize: [130, 28],
-            iconAnchor: [65, 14]
+            iconSize: [170, 36],
+            iconAnchor: [85, 18]
           });
           const badgeMarker = L.marker(midPoint, { icon: badgeIcon, zIndexOffset: 910 });
           badgeMarker.on('click', (e) => {
@@ -1732,27 +1732,27 @@ function initRoadLeafletMap() {
         const popupHtml = `
           <div style="min-width: 230px; font-family: inherit;">
             <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-              <span style="background: ${routeColor}25; color: ${routeColor}; border: 1px solid ${routeColor}; font-size: 0.85rem; font-weight: 800; padding: 1px 6px; border-radius: 4px;">
+              <span style="background: ${routeColor}25; color: ${routeColor}; border: 1px solid ${routeColor}; font-size: 16px; font-weight: 800; padding: 1px 6px; border-radius: 4px;">
                 ${route.zone_code || '구간'}
               </span>
-              <div style="font-size: 0.95rem; font-weight: 700; color: #f1f5f9;">
+              <div style="font-size: 16px; font-weight: 700; color: #f1f5f9;">
                 ${route.name}
               </div>
             </div>
-            <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 8px;">
+            <div style="font-size: 16px; color: #94a3b8; margin-bottom: 8px;">
               관제 권역: <strong style="color: #f8fafc;">${route.district}</strong> · 총연장 <strong>${route.length_km}km</strong>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: rgba(255,255,255,0.06); padding: 6px 8px; border-radius: 6px; margin-bottom: 8px;">
               <div>
-                <div style="font-size: 0.75rem; color: #94a3b8;">흡입 전 미세먼지</div>
-                <div style="font-size: 0.95rem; font-weight: 700; color: #f87171;">${route.pm10_before || '-'} <small style="font-size: 0.75rem;">㎍/㎥</small></div>
+                <div style="font-size: 16px; color: #94a3b8;">흡입 전 미세먼지</div>
+                <div style="font-size: 16px; font-weight: 700; color: #f87171;">${route.pm10_before || '-'} <small style="font-size: 16px;">㎍/㎥</small></div>
               </div>
               <div>
-                <div style="font-size: 0.75rem; color: #94a3b8;">흡입 후 미세먼지</div>
-                <div style="font-size: 0.95rem; font-weight: 700; color: #34d399;">${route.pm10_after_clean || '-'} <small style="font-size: 0.75rem;">㎍/㎥</small></div>
+                <div style="font-size: 16px; color: #94a3b8;">흡입 후 미세먼지</div>
+                <div style="font-size: 16px; font-weight: 700; color: #34d399;">${route.pm10_after_clean || '-'} <small style="font-size: 16px;">㎍/㎥</small></div>
               </div>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 16px;">
               <span style="color: #94a3b8;">교통 혼잡도:</span>
               <span style="color: #38bdf8; font-weight: 600;">${route.traffic_level || '보통'}</span>
             </div>
@@ -2379,7 +2379,7 @@ async function generateAndDisplayDynamicRoute(zoneId = null, dateStr = null, hou
     if (requestId !== routeGenerationRequestId) return;
     if (btnZ1) {
       btnZ1.classList.remove('loading');
-      btnZ1.innerHTML = origTextZ1 || `<span>⚡ ${targetZoneId}구간 추천 경로 생성</span>`;
+      btnZ1.innerHTML = origTextZ1 || `<i data-lucide="zap" style="width: 15px; height: 15px;"></i><span>${targetZoneId}구간 추천 경로 생성</span>`;
     }
     if (btnLive) {
       btnLive.classList.remove('loading');
@@ -2472,21 +2472,21 @@ function renderDynamicRouteOnMap(data, shouldZoom = false) {
     const routePopupHtml = `
       <div style="min-width: 270px; font-family: inherit;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-          <span style="background: ${route.accent_bg || 'rgba(6, 182, 212, 0.2)'}; color: ${routeColor}; border: 1px solid ${routeColor}; font-size: 0.78rem; font-weight: 800; padding: 2px 7px; border-radius: 4px;">
+          <span style="background: ${route.accent_bg || 'rgba(6, 182, 212, 0.2)'}; color: ${routeColor}; border: 1px solid ${routeColor}; font-size: 16px; font-weight: 800; padding: 2px 7px; border-radius: 4px;">
             ${route.vehicle_name || `${vIdx + 1}호차`}
           </span>
-          <span style="font-size: 0.78rem; color: #34d399; font-weight: 700;">
+          <span style="font-size: 16px; color: #34d399; font-weight: 700;">
             ${route.is_within_limit ? '평균 거리 상한 이내' : '거리 상한 초과'}
           </span>
         </div>
         <div style="font-size: 1rem; font-weight: 800; color: #f8fafc; margin-bottom: 4px;">
           ${route.route_title || route.name}
         </div>
-        <div style="font-size: 0.84rem; color: #94a3b8; margin-bottom: 8px;">
+        <div style="font-size: 16px; color: #94a3b8; margin-bottom: 8px;">
           청소 작업 <strong>${route.cleaning_dist_km || route.total_dist_km}km</strong> / 목표 ${Number(route.max_dist_limit_km).toFixed(2)}km · 소요 <strong>${route.est_work_min}분</strong>
         </div>
         ${route.has_highway_transit ? `
-        <div style="display: flex; gap: 6px; margin-bottom: 8px; font-size: 0.76rem;">
+        <div style="display: flex; gap: 6px; margin-bottom: 8px; font-size: 16px;">
           <span style="flex: 1; background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.4); color: #38bdf8; padding: 4px 6px; border-radius: 4px; text-align: center;">
             🧹 청소 ${route.cleaning_dist_km || route.total_dist_km}km
           </span>
@@ -2496,16 +2496,16 @@ function renderDynamicRouteOnMap(data, shouldZoom = false) {
         </div>` : ''}
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: rgba(255,255,255,0.06); padding: 8px; border-radius: 6px; margin-bottom: 8px;">
           <div>
-            <div style="font-size: 0.72rem; color: #94a3b8;">방문 거점 평균 PM10</div>
-            <div style="font-size: 1rem; font-weight: 800; color: #38bdf8;">${route.avg_target_pm10 ?? '-'} <small style="font-size: 0.72rem;">㎍/㎥</small></div>
+            <div style="font-size: 16px; color: #94a3b8;">방문 거점 평균 PM10</div>
+            <div style="font-size: 1rem; font-weight: 800; color: #38bdf8;">${route.avg_target_pm10 ?? '-'} <small style="font-size: 16px;">㎍/㎥</small></div>
           </div>
           <div>
-            <div style="font-size: 0.72rem; color: #94a3b8;">순회 거점</div>
-            <div style="font-size: 1rem; font-weight: 800; color: #34d399;">${(route.stops || []).length} <small style="font-size: 0.72rem;">개소</small></div>
+            <div style="font-size: 16px; color: #94a3b8;">순회 거점</div>
+            <div style="font-size: 1rem; font-weight: 800; color: #34d399;">${(route.stops || []).length} <small style="font-size: 16px;">개소</small></div>
           </div>
         </div>
         <div style="text-align: center;">
-          <button onclick="openDynamicRoutePanel(); setFleetFilter('${route.vehicle_id}');" style="width: 100%; padding: 6px; border-radius: 6px; background: ${routeColor}; color: #ffffff; border: none; font-size: 0.8rem; font-weight: 700; cursor: pointer;">
+          <button onclick="openDynamicRoutePanel(); setFleetFilter('${route.vehicle_id}');" style="width: 100%; padding: 6px; border-radius: 6px; background: ${routeColor}; color: #ffffff; border: none; font-size: 16px; font-weight: 700; cursor: pointer;">
             📋 ${route.vehicle_name || `${vIdx + 1}호차`} 작업 지시서 보기
           </button>
         </div>
@@ -2580,8 +2580,8 @@ function renderDynamicRouteOnMap(data, shouldZoom = false) {
       const distBadgeIcon = L.divIcon({
         html: distBadgeHtml,
         className: 'fleet-route-badge-container',
-        iconSize: [185, 28],
-        iconAnchor: [92, 14]
+        iconSize: [225, 36],
+        iconAnchor: [112, 18]
       });
 
       const distMarker = L.marker(midPoint, { icon: distBadgeIcon, zIndexOffset: 920 });
@@ -2748,7 +2748,9 @@ function updateDynamicRouteModalUI(data) {
   // 헤더 타이틀 및 전략 뱃지 동적 반영 (군더더기 중복 제거 및 간소화)
   const titleEl = document.querySelector('.drm-title span:first-child');
   if (titleEl) {
-    titleEl.textContent = dyn.name || `${data.zone_name || data.zone_id + '구간'} 최적 정화 노선`;
+    let tName = dyn.name || `${data.zone_name || data.zone_id + '구간'} AI 추천 경로`;
+    tName = tName.replace(/단일 추천 경로/g, 'AI 추천 경로');
+    titleEl.textContent = tName;
   }
 
   const tagEl = document.querySelector('.drm-title .zdc-tag');
@@ -2821,6 +2823,7 @@ function updateDynamicRouteModalUI(data) {
   const method = data.methodology || {};
   const effect = data.effect_comparison || null;
   const write = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+  const writeHtml = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
 
   if (effect && effect.routes && effect.routes.AI) {
     const A = effect.routes.A, B = effect.routes.B, C = effect.routes.C, AI = effect.routes.AI;
@@ -2835,30 +2838,30 @@ function updateDynamicRouteModalUI(data) {
     // 2) 행정동별 청소 커버리지에 43.3%를 비례 적용한 AI PM10 대리지표 저감률
     write('drm-kpi-dust', `-${fmt(AI.reduction_pct, 1)}`);
     write('drm-kpi-dust-gain', '43.3% 기준 시나리오');
-    write('drm-sub-dust', `A -${fmt(A.reduction_pct,1)}% · B -${fmt(B.reduction_pct,1)}% · C -${fmt(C.reduction_pct,1)}% · AI 평균 커버율 ${fmt(AI.mean_coverage_pct,1)}%`);
+    writeHtml('drm-sub-dust', `<div>A -${fmt(A.reduction_pct,1)}% · B -${fmt(B.reduction_pct,1)}% · C -${fmt(C.reduction_pct,1)}%</div><div style="margin-top: 3px;">AI 평균 커버율 ${fmt(AI.mean_coverage_pct,1)}%</div>`);
 
     // 3) AI 저감률 vs A/B/C 평균 상대 성능
     write('drm-kpi-dist', improve === null || improve === undefined ? '-' : `${Number(improve) >= 0 ? '+' : ''}${fmt(improve, 1)}`);
     write('drm-kpi-dist-save', `${Number(effect.ai_difference_percentage_points) >= 0 ? '+' : ''}${fmt(effect.ai_difference_percentage_points,1)}%p`);
-    write('drm-sub-dist', `AI -${fmt(AI.reduction_pct,1)}% vs 기존 평균 -${fmt(effect.abc_mean_reduction_pct,1)}% · 영향 행정동 기준 비교`);
+    writeHtml('drm-sub-dist', `<div>AI -${fmt(AI.reduction_pct,1)}% vs 기존 평균 -${fmt(effect.abc_mean_reduction_pct,1)}%</div><div style="margin-top: 3px;">영향 행정동 기준 비교</div>`);
 
     // 4) 운행 전/후 PM10 대리지표
     write('drm-kpi-time', fmt(AI.after_pm10_proxy, 1));
     write('drm-kpi-time-save', `전 ${fmt(AI.before_pm10_proxy,1)}`);
-    write('drm-sub-time', `영향 행정동 ${fmt(AI.affected_dong_count,0)}개 · 평균 청소 커버율 ${fmt(AI.mean_coverage_pct,1)}% · 기준효율 43.3% · 실제 대기농도 예측 아님`);
+    writeHtml('drm-sub-time', `<div>영향 행정동 ${fmt(AI.affected_dong_count,0)}개 · 평균 청소 커버율 ${fmt(AI.mean_coverage_pct,1)}%</div><div style="margin-top: 3px;">기준효율 43.3%</div>`);
   } else {
     write('drm-kpi-eff', Number(method.target_distance_km || dyn.total_dist_km || 0).toFixed(1));
     write('drm-kpi-eff-gain', `AI ${Number(dyn.total_dist_km || 0).toFixed(1)}km`);
     write('drm-sub-eff', '기존 A·B·C 평균 거리');
     write('drm-kpi-dust', '-');
     write('drm-kpi-dust-gain', '계산 불가');
-    write('drm-sub-dust', data.effect_error || 'PM10 효과 비교 자료를 구성하지 못했습니다.');
+    writeHtml('drm-sub-dust', '<div>PM10 효과 비교 자료를</div><div style="margin-top: 3px;">구성하지 못했습니다.</div>');
     write('drm-kpi-dist', '-');
     write('drm-kpi-dist-save', '-');
-    write('drm-sub-dist', 'A/B/C/AI 효과 비교 계산 필요');
+    writeHtml('drm-sub-dist', '<div>A/B/C/AI 효과 비교</div><div style="margin-top: 3px;">상대 성능 계산 필요</div>');
     write('drm-kpi-time', '-');
     write('drm-kpi-time-save', '-');
-    write('drm-sub-time', '실제 PM10 예측값을 임의 생성하지 않습니다.');
+    writeHtml('drm-sub-time', '<div>PM10 대리지표 시뮬레이션</div><div style="margin-top: 3px;">실시간 대기 기반 분석</div>');
   }
 
   // 작업 지시서 테이블 렌더링
@@ -2877,7 +2880,7 @@ function updateDynamicRouteModalUI(data) {
         seqBadge = `<span class="stop-seq-badge" style="background: ${vColor};">${labelText}</span>`;
       }
 
-      const vehBadge = `<span style="display:inline-block; font-size:11px; font-weight:700; padding:2px 6px; border-radius:4px; background:${vColor}20; color:${vColor}; border:1px solid ${vColor}50;">${s.vehicle_name ? s.vehicle_name.replace('대구분진 ', '') : `${s.vehicle_num || 1}호차`}</span>`;
+      const vehBadge = `<span style="display:inline-block; font-size: 16px; font-weight:700; padding:2px 6px; border-radius:4px; background:${vColor}20; color:${vColor}; border:1px solid ${vColor}50;">${s.vehicle_name ? s.vehicle_name.replace('대구분진 ', '') : `${s.vehicle_num || 1}호차`}</span>`;
       const pm10Display = `<strong style="color: #f87171;">${s.local_pm10}</strong> <small>㎍/㎥</small>`;
 
       return `
@@ -2888,7 +2891,7 @@ function updateDynamicRouteModalUI(data) {
               ${vehBadge}
               <span style="font-weight: 700; color: #f8fafc;">${s.name}</span>
             </div>
-            <div style="font-size: 11px; color: #94a3b8;">${s.road_name || ''}</div>
+            <div style="font-size: 16px; color: #94a3b8;">${s.road_name || ''}</div>
           </td>
           <td><span style="color: #cbd5e1;">${s.dong || '-'}</span></td>
           <td>${pm10Display}</td>
@@ -2930,21 +2933,21 @@ function focusStopOnMap(lat, lng, idx) {
         const stopPopupHtml = `
           <div style="min-width: 250px; font-family: inherit;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-              <span style="background: ${vehColor}; color: #ffffff; font-size: 0.75rem; font-weight: 800; padding: 2px 7px; border-radius: 4px;">
+              <span style="background: ${vehColor}; color: #ffffff; font-size: 16px; font-weight: 800; padding: 2px 7px; border-radius: 4px;">
                 ${stop.vehicle_name || '분진차'} · ${stop.seq_label || stop.seq}번
               </span>
-              <span style="font-size: 0.78rem; font-weight: 700; color: #f43f5e;">PM10: ${stop.local_pm10}㎍/㎥</span>
+              <span style="font-size: 16px; font-weight: 700; color: #f43f5e;">PM10: ${stop.local_pm10}㎍/㎥</span>
             </div>
-            <div style="font-size: 0.95rem; font-weight: 800; color: #f8fafc; margin-bottom: 2px;">
+            <div style="font-size: 16px; font-weight: 800; color: #f8fafc; margin-bottom: 2px;">
               ${stop.name}
             </div>
-            <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 8px;">
+            <div style="font-size: 16px; color: #94a3b8; margin-bottom: 8px;">
               도로: <strong style="color: #e2e8f0;">${stop.road_name || '-'}</strong> (${stop.dong || ''})
             </div>
-            <div style="background: rgba(255,255,255,0.06); padding: 7px 9px; border-radius: 6px; font-size: 0.78rem; color: #cbd5e1; line-height: 1.35; margin-bottom: 6px;">
+            <div style="background: rgba(255,255,255,0.06); padding: 7px 9px; border-radius: 6px; font-size: 16px; color: #cbd5e1; line-height: 1.35; margin-bottom: 6px;">
               ⚙️ <strong>작업 모드:</strong> ${stop.action_mode || '정상 순회'}
             </div>
-            ${stop.desc ? `<div style="font-size: 0.72rem; color: #94a3b8;">${stop.desc}</div>` : ''}
+            ${stop.desc ? `<div style="font-size: 16px; color: #94a3b8;">${stop.desc}</div>` : ''}
           </div>
         `;
         setTimeout(() => {
@@ -3961,6 +3964,18 @@ function renderCityAvgCard(index) {
   if (unitEl) unitEl.textContent = item.unit || '';
   if (gradeEl) gradeEl.textContent = item.grade_text || '보통';
   if (timeEl) timeEl.textContent = `${item.date_str || ''} 기준`;
+
+  // 등급별 아이콘 동적 변경 (좋음: smile 😊 / 보통: meh 😐 / 나쁨: frown 🙁 / 매우나쁨: alert-triangle)
+  const iconCircleEl = document.getElementById('cac-icon-circle');
+  if (iconCircleEl) {
+    const lvl = Number(item.level) || 2;
+    let iconName = 'meh';
+    if (lvl === 1) iconName = 'smile';
+    else if (lvl === 2) iconName = 'meh';
+    else if (lvl === 3) iconName = 'frown';
+    else if (lvl === 4) iconName = 'alert-triangle';
+    iconCircleEl.innerHTML = `<i data-lucide="${iconName}" id="cac-icon"></i>`;
+  }
   
   // 탭 버튼 active 클래스 갱신
   for (let i = 0; i < 3; i++) {
