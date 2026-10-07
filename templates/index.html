@@ -75,7 +75,7 @@
   </script>
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20261005_compact_zdc_v3" onerror="this.onerror=null; this.href='../static/css/style.css?v=20261005_compact_zdc_v3';">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20261007_standalone_widget_v1" onerror="this.onerror=null; this.href='../static/css/style.css?v=20261007_standalone_widget_v1';">
 </head>
 <body>
 
@@ -123,7 +123,40 @@
       </div>
     </header>
 
-    <!-- 2. 좌측 플로팅 패널 -->
+    <!-- 2. 대구광역시 공식 전체 대기 평균 카드 (독립 플로팅 위젯) -->
+    <div class="city-avg-floating-widget" id="city-avg-floating-widget">
+      <div class="city-avg-card level2" id="city-avg-card" onclick="nextCityAvgItem()" title="클릭하여 미세먼지 / 초미세먼지 / 오존 평균 전환">
+        <div class="cac-header">
+          <div class="cac-title-box">
+            <span class="cac-badge">대구시 공식 평균</span>
+            <h3 class="cac-title" id="cac-title">대구광역시 오존 평균</h3>
+          </div>
+          <div class="cac-tabs">
+            <button class="cac-tab-btn" id="cac-tab-0" onclick="event.stopPropagation(); setCityAvgIndex(0);">PM10</button>
+            <button class="cac-tab-btn" id="cac-tab-1" onclick="event.stopPropagation(); setCityAvgIndex(1);">PM2.5</button>
+            <button class="cac-tab-btn active" id="cac-tab-2" onclick="event.stopPropagation(); setCityAvgIndex(2);">O₃</button>
+          </div>
+        </div>
+        <div class="cac-body">
+          <div class="cac-val-box">
+            <span class="cac-val" id="cac-val">0.0616</span>
+            <span class="cac-unit" id="cac-unit">ppm</span>
+          </div>
+          <div class="cac-grade-box">
+            <span class="cac-grade-text" id="cac-grade-text">보통</span>
+            <div class="cac-icon-circle" id="cac-icon-circle">
+              <i data-lucide="smile" id="cac-icon"></i>
+            </div>
+          </div>
+        </div>
+        <div class="cac-footer">
+          <span class="cac-time" id="cac-time">2026.10.07 14시 기준</span>
+          <span class="cac-indicator">🔄 실시간 연동</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 좌측 플로팅 컨트롤 패널 -->
     <aside class="floating-panel" id="control-panel">
       <div class="panel-header" id="panel-toggle-header">
         <div class="panel-title">
@@ -134,11 +167,7 @@
 
       <div class="panel-body" id="air-panel-body">
         <!-- 실시간 측정소 선택 셀렉트 -->
-        <div class="control-group">
-          <label class="control-label" for="station-select">
-            <i data-lucide="radio"></i>
-            대기 측정소 직접 선택
-          </label>
+        <div class="control-group" style="margin-bottom: 8px;">
           <select id="station-select" class="custom-select">
             <option value="701">701 수창동 (중구)</option>
             <option value="702">702 지산동 (수성구)</option>
@@ -630,8 +659,8 @@
   </div>
 
   <!-- 지도 및 13개 최적 균형 운행구간 & 실시간 대기 스크립트 -->
-  <script src="{{ url_for('static', filename='js/zones.js') }}?v=20261004_v1_dense_grid_v3" onerror="this.onerror=null; this.src='../static/js/zones.js?v=20261004_v1_dense_grid_v3';"></script>
-  <script src="{{ url_for('static', filename='js/map.js') }}?v=20261004_v1_dense_grid_v3" onerror="this.onerror=null; this.src='../static/js/map.js?v=20261004_v1_dense_grid_v3';"></script>
+  <script src="{{ url_for('static', filename='js/zones.js') }}?v=20261007_v1" onerror="this.onerror=null; this.src='../static/js/zones.js?v=20261007_v1';"></script>
+  <script src="{{ url_for('static', filename='js/map.js') }}?v=20261007_city_avg_v1" onerror="this.onerror=null; this.src='../static/js/map.js?v=20261007_city_avg_v1';"></script>
   <script>
     if (window.lucide) {
       lucide.createIcons();

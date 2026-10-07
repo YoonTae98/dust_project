@@ -3928,6 +3928,100 @@ window.stopPatrolNavigation = stopPatrolNavigation;
 window.toggleNavSimulationMode = toggleNavSimulationMode;
 window.cycleNavSpeedMultiplier = cycleNavSpeedMultiplier;
 
+// ==========================================================================
+// 대구광역시 공식 전체 대기 평균 카드 (air.daegu.go.kr 메인 연동)
+// ==========================================================================
+let cityAveragesItems = [];
+let currentCityAvgIndex = 2; // 기본: O3 (0: PM10, 1: PM2.5, 2: O3)
+let cityAvgAutoTimer = null;
+
+function renderCityAvgCard(index) {
+  if (!cityAveragesItems || cityAveragesItems.length === 0) return;
+  const idx = (index + cityAveragesItems.length) % cityAveragesItems.length;
+  currentCityAvgIndex = idx;
+  const item = cityAveragesItems[idx];
+  
+  const cardEl = document.getElementById('city-avg-card');
+  const titleEl = document.getElementById('cac-title');
+  const valEl = document.getElementById('cac-val');
+  const unitEl = document.getElementById('cac-unit');
+  const gradeEl = document.getElementById('cac-grade-text');
+  const timeEl = document.getElementById('cac-time');
+  
+  if (!cardEl) return;
+  
+  // 레벨 클래스 갱신 (level1, level2, level3, level4)
+  cardEl.className = `city-avg-card level${item.level || 2}`;
+  if (item.bg_gradient) {
+    cardEl.style.background = item.bg_gradient;
+  }
+  
+  if (titleEl) titleEl.textContent = item.title || `대구광역시 ${item.name} 평균`;
+  if (valEl) valEl.textContent = item.value || '--';
+  if (unitEl) unitEl.textContent = item.unit || '';
+  if (gradeEl) gradeEl.textContent = item.grade_text || '보통';
+  if (timeEl) timeEl.textContent = `${item.date_str || ''} 기준`;
+  
+  // 탭 버튼 active 클래스 갱신
+  for (let i = 0; i < 3; i++) {
+    const tabBtn = document.getElementById(`cac-tab-${i}`);
+    if (tabBtn) {
+      if (i === idx) tabBtn.classList.add('active');
+      else tabBtn.classList.remove('active');
+    }
+  }
+  
+  // Lucide 아이콘 갱신
+  if (window.lucide) {
+    lucide.createIcons();
+  }
+}
+
+function nextCityAvgItem() {
+  renderCityAvgCard(currentCityAvgIndex + 1);
+  restartCityAvgTimer();
+}
+
+function setCityAvgIndex(idx) {
+  renderCityAvgCard(idx);
+  restartCityAvgTimer();
+}
+
+function startCityAvgAutoTimer() {
+  if (cityAvgAutoTimer) clearInterval(cityAvgAutoTimer);
+  cityAvgAutoTimer = setInterval(() => {
+    renderCityAvgCard(currentCityAvgIndex + 1);
+  }, 4500); // 4.5초마다 부드럽게 자동 전환
+}
+
+function restartCityAvgTimer() {
+  startCityAvgAutoTimer();
+}
+
+async function fetchCityAverages() {
+  try {
+    const res = await fetch('/api/air/city-averages');
+    const json = await res.json();
+    if (json.success && json.data && json.data.items) {
+      cityAveragesItems = json.data.items;
+      renderCityAvgCard(currentCityAvgIndex);
+      startCityAvgAutoTimer();
+    }
+  } catch (e) {
+    console.warn('[CityAverages] 로드 실패:', e);
+  }
+}
+
+window.nextCityAvgItem = nextCityAvgItem;
+window.setCityAvgIndex = setCityAvgIndex;
+
+// 초기 로드 시 대구시 전체 평균 수치 즉시 조회
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', fetchCityAverages);
+} else {
+  fetchCityAverages();
+}
+
 if (window._pendingDynamicRouteGen) {
   const p = window._pendingDynamicRouteGen;
   window._pendingDynamicRouteGen = null;

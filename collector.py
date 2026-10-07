@@ -381,11 +381,107 @@ def crawl_daegu_realtime_air(sttn_cd='701', date_str=None):
         'latest': latest_rec
     }
 
-    # 파일 + 메모리 양쪽에 캐시 저장 (서버 재시작 후에도 즉시 사용 가능)
+    # SQLite DB에 캐시 저장
     _save_cache(cache_key, result)
-    # 오래된 캐시 파일 정리 (2일 이상)
-    _cleanup_old_cache(keep_days=2)
     return result
+
+def crawl_daegu_city_averages():
+    """
+    대구광역시 실시간 대기정보 시스템 메인(index.do)의 대구 전체 평균 수치 크롤링
+    - 오존(O3), 미세먼지(PM10), 초미세먼지(PM2.5) 전체 평균값, 등급, 기준일시 추출
+    """
+    from zoneinfo import ZoneInfo
+    korea_now = datetime.now(ZoneInfo('Asia/Seoul'))
+    today_str = korea_now.strftime('%Y-%m-%d')
+    now_hour = korea_now.strftime('%H')
+    cache_key = f"city_averages_{today_str}_{now_hour}"
+
+    cached = _load_cache(cache_key)
+    if cached:
+        return cached
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    url = "https://air.daegu.go.kr/index.do"
+    req = urllib.request.Request(url, headers={
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    })
+
+    items_map = {
+        'totalItem_7': {'key': 'pm10', 'name': '미세먼지', 'substance': 'PM10', 'default_unit': '㎍/㎥'},
+        'totalItem_8': {'key': 'pm25', 'name': '초미세먼지', 'substance': 'PM2.5', 'default_unit': '㎍/㎥'},
+        'totalItem_1': {'key': 'o3', 'name': '오존', 'substance': 'O₃', 'default_unit': 'ppm'}
+    }
+
+    try:
+        html = urllib.request.urlopen(req, context=ctx, timeout=10).read().decode('utf-8', errors='ignore')
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        result_items = []
+        for div_id, meta in items_map.items():
+            div = soup.find('div', id=div_id)
+            if not div:
+                continue
+            
+            tit = div.find(class_='tit')
+            tit_text = tit.text.strip() if tit else f"대구광역시 {meta['name']} 평균"
+            val_tag = div.find(class_='num')
+            val_text = val_tag.text.strip() if val_tag else '--'
+            unit_tag = div.find('em')
+            unit_text = unit_tag.text.strip() if unit_tag else meta['default_unit']
+            grade_tag = div.find(class_='grade')
+            grade_text = grade_tag.text.strip() if grade_tag else '보통'
+            date_tag = div.find(class_='date_area')
+            date_text = date_tag.text.strip() if date_tag else f"{today_str} {now_hour}시"
+
+            # level 판별
+            classes = div.get('class', [])
+            level_num = 2
+            for c in classes:
+                if c.startswith('level') and len(c) > 5 and c[5:].isdigit():
+                    level_num = int(c[5:])
+
+            color_map = {1: '#3b82f6', 2: '#10b981', 3: '#f59e0b', 4: '#ef4444'}
+            bg_gradient_map = {
+                1: 'linear-gradient(135deg, #2563eb, #38bdf8)',   # 파랑/스카이 (좋음)
+                2: 'linear-gradient(135deg, #059669, #10b981)',   # 에메랄드/그린 (보통)
+                3: 'linear-gradient(135deg, #d97706, #f59e0b)',   # 앰버/오렌지 (나쁨)
+                4: 'linear-gradient(135deg, #dc2626, #ef4444)'    # 레드/로즈 (매우나쁨)
+            }
+
+            result_items.append({
+                'key': meta['key'],
+                'title': tit_text,
+                'name': meta['name'],
+                'substance': meta['substance'],
+                'value': val_text,
+                'unit': unit_text,
+                'grade_text': grade_text,
+                'level': level_num,
+                'color': color_map.get(level_num, '#10b981'),
+                'bg_gradient': bg_gradient_map.get(level_num, bg_gradient_map[2]),
+                'date_str': date_text
+            })
+
+        if result_items:
+            payload = {'items': result_items, 'updated_at': f"{today_str} {now_hour}시"}
+            _save_cache(cache_key, payload)
+            return payload
+
+    except Exception as e:
+        print(f"[AirCrawler] 대구시 전체 평균 크롤링 오류: {e}")
+
+    # 에러 또는 미응답 시 기본 구조
+    return {
+        'items': [
+            {'key': 'pm10', 'title': '대구광역시 미세먼지 평균', 'name': '미세먼지', 'substance': 'PM10', 'value': '--', 'unit': '㎍/㎥', 'grade_text': '보통', 'level': 2, 'color': '#10b981', 'bg_gradient': 'linear-gradient(135deg, #059669, #10b981)', 'date_str': f"{today_str} {now_hour}시"},
+            {'key': 'pm25', 'title': '대구광역시 초미세먼지 평균', 'name': '초미세먼지', 'substance': 'PM2.5', 'value': '--', 'unit': '㎍/㎥', 'grade_text': '보통', 'level': 2, 'color': '#10b981', 'bg_gradient': 'linear-gradient(135deg, #059669, #10b981)', 'date_str': f"{today_str} {now_hour}시"},
+            {'key': 'o3', 'title': '대구광역시 오존 평균', 'name': '오존', 'substance': 'O₃', 'value': '--', 'unit': 'ppm', 'grade_text': '보통', 'level': 2, 'color': '#10b981', 'bg_gradient': 'linear-gradient(135deg, #059669, #10b981)', 'date_str': f"{today_str} {now_hour}시"}
+        ],
+        'updated_at': f"{today_str} {now_hour}시"
+    }
 
 def crawl_all_stations_pm10(date_str=None, hour_str=None):
     """

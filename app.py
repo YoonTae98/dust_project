@@ -13,10 +13,16 @@ app.secret_key = 'daegu-dust-vehicle-analysis-2026'
 # 백그라운드 스레드로 실행하므로 서버 응답 지연 없음
 # ==========================================================================
 def _warmup_air_cache():
-    """8개 자치구 대표 측정소 대기 데이터를 서버 시작 시 미리 캐싱"""
+    """8개 자치구 대표 측정소 및 대구시 전체 평균 대기 데이터를 서버 시작 시 미리 캐싱"""
     import time
     time.sleep(2)  # 서버가 완전히 뜬 후 시작
-    print("[Warmup] 대기 캐시 워밍업 시작 (8개 자치구)...")
+    print("[Warmup] 대기 캐시 워밍업 시작 (8개 자치구 & 대구시 전체 평균)...")
+    try:
+        collector.crawl_daegu_city_averages()
+        print("[Warmup] 대구시 전체 평균 대기 데이터 캐시 완료 [OK]")
+    except Exception as e:
+        print(f"[Warmup] 대구시 전체 평균 캐시 실패: {e}")
+
     for dist, info in collector.DISTRICT_STATION_MAP.items():
         try:
             collector.crawl_daegu_realtime_air(sttn_cd=info['sttn_cd'])
@@ -100,6 +106,12 @@ def api_air_realtime():
     data = collector.crawl_daegu_realtime_air(sttn_cd=sttn_cd, date_str=date_str)
     return jsonify({'success': True, 'data': data})
 
+@app.route('/api/air/city-averages', methods=['GET'])
+def api_air_city_averages():
+    """대구광역시 전체 평균 대기질(오존, 미세먼지, 초미세먼지) 크롤링 데이터 API"""
+    data = collector.crawl_daegu_city_averages()
+    return jsonify({'success': True, 'data': data})
+
 @app.route('/api/air/districts', methods=['GET'])
 def api_air_districts():
     """8개 자치구 대표 데이터, 25개 전체 측정소 및 142개 읍·면·동별 IDW 정밀 대기정보 API"""
@@ -109,11 +121,13 @@ def api_air_districts():
     all_stations = collector.crawl_all_stations_pm10(date_str=date_str, hour_str=hour_str)
     # daegu_dust2.ipynb 기반 142개 읍·면·동 IDW 공간 보간 계산
     dong_idw_data = collector.get_dong_idw_air(all_stations)
+    city_averages = collector.crawl_daegu_city_averages()
     return jsonify({
         'success': True,
         'districts': districts,
         'stations': list(all_stations.values()),
-        'dongs': dong_idw_data
+        'dongs': dong_idw_data,
+        'city_averages': city_averages
     })
 
 @app.route('/api/air/stations', methods=['GET'])
