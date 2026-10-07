@@ -7,65 +7,85 @@ import ssl
 import urllib.request
 import urllib.parse
 from bs4 import BeautifulSoup
+import sqlite3
 from datetime import datetime, timedelta
 import config
 
 # ==========================================================================
-# 파일 기반 시간별 캐시 (서버 재시작 후에도 유지, 정각 단위로 캐시 공유)
-# 캐시 키 형식: {sttn_cd}_{YYYY-MM-DD}_{HH}  (14:10이든 14:59이든 '14' 동일)
+# SQLite 기반 단일 파일 시간별 캐시 (data/air_cache.db)
+# 수백 개의 JSON 파일 대신 단 1개의 경량 DB 파일로 깔끔하게 관리
 # ==========================================================================
-_CACHE_DIR = os.path.join(os.path.dirname(__file__), 'data', 'air_cache')
-os.makedirs(_CACHE_DIR, exist_ok=True)
+_DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'air_cache.db')
 
-# 메모리 캐시 (파일 읽기 횟수 최소화용 2차 캐시)
+# 메모리 캐시 (DB 읽기 횟수 최소화용 1차 캐시)
 _MEM_CACHE = {}
+
+def _get_db():
+    conn = sqlite3.connect(_DB_PATH, timeout=10)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def _init_cache_db():
+    """캐시 테이블 초기화"""
+    try:
+        with _get_db() as conn:
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS air_cache (
+                    cache_key TEXT PRIMARY KEY,
+                    data_json TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_air_cache_created ON air_cache(created_at)')
+    except Exception as e:
+        print(f"[AirCache] SQLite DB 초기화 오류: {e}")
+
+_init_cache_db()
 
 def _get_hour_cache_key(sttn_cd: str, date_str: str) -> str:
     """현재 시각 기준 시간 단위 캐시 키 생성 (예: 701_2026-10-02_14)"""
     now_hour = datetime.now().strftime('%H')
     return f"{sttn_cd}_{date_str}_{now_hour}"
 
-def _cache_file_path(cache_key: str) -> str:
-    return os.path.join(_CACHE_DIR, f"{cache_key}.json")
-
 def _load_cache(cache_key: str):
-    """파일 캐시 → 메모리 캐시 순서로 조회. 없으면 None 반환."""
+    """1차 메모리 캐시 → 2차 SQLite DB 순서로 조회. 없으면 None 반환."""
     if cache_key in _MEM_CACHE:
         return _MEM_CACHE[cache_key]
-    fpath = _cache_file_path(cache_key)
-    if os.path.exists(fpath):
-        try:
-            with open(fpath, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            _MEM_CACHE[cache_key] = data
-            return data
-        except Exception as e:
-            print(f"[AirCache] 캐시 파일 읽기 실패 ({fpath}): {e}")
+    try:
+        with _get_db() as conn:
+            cur = conn.execute('SELECT data_json FROM air_cache WHERE cache_key = ?', (cache_key,))
+            row = cur.fetchone()
+            if row:
+                data = json.loads(row['data_json'])
+                _MEM_CACHE[cache_key] = data
+                return data
+    except Exception as e:
+        print(f"[AirCache] DB 캐시 읽기 실패 ({cache_key}): {e}")
     return None
 
 def _save_cache(cache_key: str, data: dict):
-    """메모리 + 파일 양쪽에 캐시 저장."""
+    """메모리 + SQLite DB 양쪽에 캐시 저장."""
     _MEM_CACHE[cache_key] = data
-    fpath = _cache_file_path(cache_key)
     try:
-        with open(fpath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        data_json = json.dumps(data, ensure_ascii=False)
+        with _get_db() as conn:
+            conn.execute('''
+                INSERT INTO air_cache (cache_key, data_json, created_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(cache_key) DO UPDATE SET
+                    data_json = excluded.data_json,
+                    created_at = CURRENT_TIMESTAMP
+            ''', (cache_key, data_json))
     except Exception as e:
-        print(f"[AirCache] 캐시 파일 저장 실패 ({fpath}): {e}")
+        print(f"[AirCache] DB 캐시 저장 실패 ({cache_key}): {e}")
 
 def _cleanup_old_cache(keep_days: int = 2):
-    """오래된 캐시 파일 정리 (기본 2일 이상 지난 파일 삭제)"""
-    now = datetime.now()
+    """오래된 캐시 레코드 자동 삭제 (기본 2일 이상 지난 데이터 청소)"""
     try:
-        for fname in os.listdir(_CACHE_DIR):
-            fpath = os.path.join(_CACHE_DIR, fname)
-            if not fname.endswith('.json'):
-                continue
-            mtime = datetime.fromtimestamp(os.path.getmtime(fpath))
-            if (now - mtime).days >= keep_days:
-                os.remove(fpath)
+        with _get_db() as conn:
+            conn.execute(f"DELETE FROM air_cache WHERE created_at < datetime('now', '-{keep_days} days')")
     except Exception as e:
-        print(f"[AirCache] 캐시 정리 실패: {e}")
+        print(f"[AirCache] DB 캐시 청소 실패: {e}")
 
 # 대구광역시 보건환경연구원 공식 25개 측정소 사전 (sttn_cd -> 한글명 및 소속 구·군)
 STATION_NAMES = {

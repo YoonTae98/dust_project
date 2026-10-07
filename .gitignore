@@ -18,3 +18,8 @@ ENV/
 # OS files
 .DS_Store
 Thumbs.db
+
+# SQLite DB & Runtime Outputs
+*.db
+data/air_cache.db
+data/realtime_idw/

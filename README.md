@@ -7,7 +7,7 @@
 ## 🌟 주요 기능 및 특징
 
 1. **실시간 대기질 수집 및 읍면동 단위 IDW 공간 보간**
-   - **에어코리아(AirKorea) Open API 실시간 연동**: 대구 시내 25개 대기 측정소의 실시간 PM10, PM2.5, NO2, O3 데이터 수집 및 로컬 캐싱.
+   - **대구광역시 실시간 대기정보(air.daegu.go.kr) 크롤링 연동**: 대구시 보건환경연구원 공식 사이트로부터 대구 25개 대기 측정소의 실시간 PM10, PM2.5, NO2, O3 데이터를 실시간 크롤링 및 로컬 캐싱.
    - **IDW(Inverse Distance Weighting, 역거리 가중법)**: 25개 측정소 실측치를 기반으로 대구시 140여 개 전체 행정동 중심점의 대기질을 실시간 보간 연산.
    - **카카오맵 히트맵/단계구분도(Choropleth)**: 행정동별 대기질 수준(좋음/보통/나쁨/매우나쁨)에 맞추어 지도에 동별 색상 레이어 표출.
 
@@ -44,7 +44,7 @@ flowchart TD
 
     subgraph Server ["🐍 백엔드 (Flask 서버)"]
         App["app.py\n(REST API 라우팅 & 캐시 워밍업)"]
-        Collector["collector.py\n(AirKorea API 수집 & IDW 보간)"]
+        Collector["collector.py\n(대구 대기정보 크롤링 & IDW 보간)"]
         SingleRoute["single_route.py\n(통합 경로 생성 & 효과 분석)"]
         Optimizer["route_optimizer.py\n(권역별 도로 탐색 & TSP)"]
         Routing["road_routing.py\n(도로망 연결 & 자동차전용도로 배제)"]
@@ -59,7 +59,7 @@ flowchart TD
 
     subgraph Storage ["💾 백엔드 전용 로컬 데이터 (data/)"]
         Stations["data/stations.csv\n(25개 측정소 좌표)"]
-        AirCache["data/air_cache/\n(실시간 API 응답 캐시)"]
+        AirCache["data/air_cache.db\n(단일 SQLite 크롤링 캐시)"]
         ZoneNodes["data/zone_nodes/\n(1~13권역 도로 격자)"]
         DaeguRoutes["data/daegu_routes.json\n(기본 도로망)"]
 
@@ -80,11 +80,11 @@ flowchart TD
 dust/
 │
 ├── 📁 data/                           # [서버 전용 내부 데이터베이스]
-│   ├── air_cache/                    # 에어코리아 API 실시간 응답 캐시 (중복 호출 방지)
+│   ├── air_cache.db                  # 🌟 대구시 대기정보 실시간 크롤링 SQLite 단일 캐시 DB
 │   ├── realtime_idw/                 # 읍면동별 IDW 대기질 보간 연산 결과 CSV
 │   ├── zone_nodes/                   # 1~13권역별 도로 탐색 후보 노드 (zone1~13.json)
 │   ├── daegu_routes.json             # 13개 전 권역 도로망 지오메트리 & 기본 노선
-│   └── stations.csv                  # 대구 25개 에어코리아 측정소 위경도 메타데이터
+│   └── stations.csv                  # 대구 25개 대기 측정소 위경도 메타데이터
 │
 ├── 📁 pm10_effect_model/              # [PM10 도로 미세먼지 저감 산출 모델]
 │   ├── __init__.py                   # 패키지 진입점 (evaluate_proxy_routes 노출)
